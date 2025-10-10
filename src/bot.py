@@ -5,6 +5,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.filters import Command
 
 from src.config import Config
 
@@ -35,7 +36,12 @@ class TelegramBot:
             message_handler: Экземпляр MessageHandler с обработчиками
         """
         # Регистрация обработчиков команд
-        self.dp.message.register(message_handler.start_command, commands=["start"])
+        self.dp.message.register(message_handler.start_command, Command("start"))
+        self.dp.message.register(message_handler.reset_command, Command("reset"))
+
+        # Регистрация обработчика текстовых сообщений (должен быть последним)
+        self.dp.message.register(message_handler.handle_message)
+
         logger.info("Handlers registered")
 
     async def start(self):

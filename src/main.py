@@ -7,7 +7,9 @@ from dotenv import load_dotenv
 
 from src.bot import TelegramBot
 from src.config import Config
+from src.conversation import Conversation
 from src.handlers import MessageHandler
+from src.llm_client import LLMClient
 
 # Настройка логирования
 logging.basicConfig(
@@ -32,8 +34,10 @@ async def main():
         return
 
     # Создаем компоненты приложения
+    conversation = Conversation()
+    llm_client = LLMClient(config)
     bot = TelegramBot(config)
-    message_handler = MessageHandler(config)
+    message_handler = MessageHandler(config, llm_client, conversation)
 
     # Регистрируем обработчики
     bot.register_handlers(message_handler)
