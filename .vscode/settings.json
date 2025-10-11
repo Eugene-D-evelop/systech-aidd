@@ -1,0 +1,45 @@
+{
+    "makefile.configureOnOpen": false,
+    // Python настройки
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    // Тестирование
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests",
+        "-v",
+        "--tb=short",
+        "--strict-markers",
+        "-m",
+        "not integration"
+    ],
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    "python.testing.cwd": "${workspaceFolder}",
+    // Форматирование и линтинг
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    },
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+        }
+    },
+    // Ruff настройки
+    "ruff.lint.args": [
+        "--config=${workspaceFolder}/pyproject.toml"
+    ],
+    "ruff.format.args": [
+        "--config=${workspaceFolder}/pyproject.toml"
+    ],
+    // Mypy настройки
+    "python.linting.enabled": true,
+    "python.linting.mypyEnabled": true,
+    "python.linting.mypyArgs": [
+        "--config-file=${workspaceFolder}/pyproject.toml",
+        "--show-error-codes"
+    ]
+}

@@ -1,0 +1,92 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "🤖 Bot: Run (Normal)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.main",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "PYTHONUNBUFFERED": "1"
+            }
+        },
+        {
+            "name": "🤖 Bot: Run (Debug Mode)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.main",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "PYTHONUNBUFFERED": "1",
+                "LOG_LEVEL": "DEBUG"
+            }
+        },
+        {
+            "name": "🤖 Bot: Run via Make",
+            "type": "debugpy",
+            "request": "launch",
+            "preLaunchTask": "bot-run",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Debug Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests",
+                "-v",
+                "--tb=short",
+                "-m",
+                "not integration"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Python: Debug Current Test File",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${file}",
+                "-v",
+                "--tb=short"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "Python: Debug Integration Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests",
+                "-v",
+                "--tb=short",
+                "-m",
+                "integration"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

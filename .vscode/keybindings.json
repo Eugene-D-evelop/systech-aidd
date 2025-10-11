@@ -1,0 +1,31 @@
+[
+    // Быстрый запуск бота
+    {
+        "key": "ctrl+shift+r",
+        "command": "workbench.action.tasks.runTask",
+        "args": "🤖 Start Bot"
+    },
+    // Запуск юнит-тестов
+    {
+        "key": "ctrl+shift+t",
+        "command": "workbench.action.tasks.runTask",
+        "args": "🧪 Run Unit Tests"
+    },
+    // Форматирование кода
+    {
+        "key": "ctrl+shift+f",
+        "command": "workbench.action.tasks.runTask",
+        "args": "✨ Format Code"
+    },
+    // CI проверка
+    {
+        "key": "ctrl+shift+c",
+        "command": "workbench.action.tasks.runTask",
+        "args": "🚀 CI Check"
+    },
+    // Открыть Test Explorer
+    {
+        "key": "ctrl+shift+e",
+        "command": "testing.showMostRecentOutput"
+    }
+]

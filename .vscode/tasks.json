@@ -1,0 +1,163 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "bot-run",
+            "type": "shell",
+            "command": "make run",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "🤖 Start Bot",
+            "type": "shell",
+            "command": "uv run python -m src.main",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": true,
+                "showReuseMessage": false
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "icon": {
+                "id": "rocket",
+                "color": "terminal.ansiGreen"
+            }
+        },
+        {
+            "label": "🧪 Run All Tests",
+            "type": "shell",
+            "command": "make test",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "group": "test",
+            "icon": {
+                "id": "beaker",
+                "color": "terminal.ansiBlue"
+            }
+        },
+        {
+            "label": "🧪 Run Unit Tests",
+            "type": "shell",
+            "command": "make test-unit",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "group": "test",
+            "icon": {
+                "id": "beaker",
+                "color": "terminal.ansiCyan"
+            }
+        },
+        {
+            "label": "🔍 Lint Code",
+            "type": "shell",
+            "command": "make lint",
+            "problemMatcher": [
+                "$eslint-stylish",
+                {
+                    "owner": "python",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceFolder}"
+                    ],
+                    "pattern": {
+                        "regexp": "^(.+):(\\d+):(\\d+):\\s+(error|warning|info):\\s+(.+)$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "severity": 4,
+                        "message": 5
+                    }
+                }
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "group": "test",
+            "icon": {
+                "id": "search",
+                "color": "terminal.ansiYellow"
+            }
+        },
+        {
+            "label": "✨ Format Code",
+            "type": "shell",
+            "command": "make format",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "icon": {
+                "id": "sparkle",
+                "color": "terminal.ansiMagenta"
+            }
+        },
+        {
+            "label": "🚀 CI Check",
+            "type": "shell",
+            "command": "make ci",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": true
+            },
+            "group": "test",
+            "icon": {
+                "id": "check-all",
+                "color": "terminal.ansiGreen"
+            }
+        },
+        {
+            "label": "📦 Install Dependencies",
+            "type": "shell",
+            "command": "make install",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "icon": {
+                "id": "package",
+                "color": "terminal.ansiBlue"
+            }
+        },
+        {
+            "label": "🧹 Clean Cache",
+            "type": "shell",
+            "command": "python -Bc \"import pathlib; [p.unlink() for p in pathlib.Path('.').rglob('*.py[co]')]; [p.rmdir() for p in pathlib.Path('.').rglob('__pycache__')]\"",
+            "windows": {
+                "command": "Get-ChildItem -Recurse -Include *.pyc,__pycache__ | Remove-Item -Force -Recurse"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            },
+            "icon": {
+                "id": "trash",
+                "color": "terminal.ansiRed"
+            }
+        }
+    ]
+}
