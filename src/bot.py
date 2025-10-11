@@ -1,13 +1,17 @@
 """Telegram бот - инициализация и регистрация обработчиков."""
 
 import logging
+from typing import TYPE_CHECKING
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 
-from src.config import Config
+from .config import Config
+
+if TYPE_CHECKING:
+    from .handlers import MessageHandler
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +33,7 @@ class TelegramBot:
         self.dp = Dispatcher()
         logger.info("Telegram bot initialized")
 
-    def register_handlers(self, message_handler):
+    def register_handlers(self, message_handler: "MessageHandler") -> None:
         """Регистрация обработчиков сообщений.
 
         Args:
@@ -44,11 +48,10 @@ class TelegramBot:
 
         logger.info("Handlers registered")
 
-    async def start(self):
+    async def start(self) -> None:
         """Запуск бота в режиме polling."""
         logger.info("Bot starting...")
         try:
             await self.dp.start_polling(self.bot)
         finally:
             await self.bot.session.close()
-

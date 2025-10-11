@@ -1,6 +1,6 @@
 """Конфигурация приложения через переменные окружения."""
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Config(BaseSettings):
@@ -18,3 +18,4 @@ class Config(BaseSettings):
     max_tokens: int = 1000
     timeout: int = 60
 
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 from src.config import Config
 from src.llm_client import LLMClient
 
+# Все тесты в этом файле - интеграционные (требуют реального API)
+pytestmark = pytest.mark.integration
+
 # Загружаем переменные окружения из .env
 load_dotenv()
 
@@ -93,9 +96,7 @@ async def test_get_response_empty_message_list(llm_client):
     messages = []
 
     # Даже с пустым списком, если есть system_prompt, должен быть ответ
-    response = await llm_client.get_response(
-        messages=messages, system_prompt="Say hello"
-    )
+    response = await llm_client.get_response(messages=messages, system_prompt="Say hello")
 
     assert response is not None
     assert isinstance(response, str)
@@ -147,10 +148,7 @@ async def test_config_parameters_used(llm_client, config):
     messages = [{"role": "user", "content": "Test"}]
 
     # Проверяем что можем получить ответ с параметрами из config
-    response = await llm_client.get_response(
-        messages=messages, system_prompt=config.system_prompt
-    )
+    response = await llm_client.get_response(messages=messages, system_prompt=config.system_prompt)
 
     assert response is not None
     assert isinstance(response, str)
-

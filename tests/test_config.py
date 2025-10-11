@@ -48,25 +48,29 @@ def test_config_with_custom_values(monkeypatch):
     assert config.timeout == 120
 
 
-def test_config_missing_required_field(monkeypatch):
+def test_config_missing_required_field(monkeypatch, tmp_path):
     """Тест ошибки при отсутствии обязательного поля."""
-    # Удаляем все обязательные переменные окружения
+    from src.config import Config
+
+    # Создаем временный пустой .env файл
+    env_file = tmp_path / ".env"
+    env_file.write_text("")
+
+    # Удаляем все переменные окружения
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
     monkeypatch.delenv("SYSTEM_PROMPT", raising=False)
 
-    # Устанавливаем только часть
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test_api_key")
-    monkeypatch.setenv("OPENROUTER_MODEL", "test_model")
-    monkeypatch.setenv("SYSTEM_PROMPT", "Test prompt")
+    # Меняем рабочую директорию на временную
+    monkeypatch.chdir(tmp_path)
 
-    from src.config import Config
-
+    # Пытаемся создать Config без всех обязательных полей
     with pytest.raises(ValidationError):
         Config()
 
 
+@pytest.mark.integration
 def test_config_from_real_env():
     """Тест загрузки реальной конфигурации из .env файла."""
     # Загружаем реальные переменные из .env
@@ -96,6 +100,7 @@ def test_config_from_real_env():
     assert config.timeout > 0
 
 
+@pytest.mark.integration
 def test_config_telegram_token_format():
     """Тест формата Telegram токена из реальной конфигурации."""
     load_dotenv()

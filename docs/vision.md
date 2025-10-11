@@ -15,7 +15,11 @@
 - **aiohttp** - асинхронные HTTP-запросы (зависимость aiogram)
 
 ### Инструменты разработки
-- **ruff** - линтер и форматтер кода
+- **ruff** - линтер и форматтер кода (расширенные правила: E, F, I, N, W, B, C4, UP, SIM, RET, ARG)
+- **mypy** - статическая проверка типов (strict mode)
+- **pytest** - фреймворк для тестирования
+- **pytest-asyncio** - поддержка async тестов
+- **pytest-cov** - измерение покрытия кода
 
 ## 2. Принципы разработки
 
@@ -50,18 +54,27 @@ systech-aidd/
 ├── .gitignore
 ├── README.md
 ├── Makefile              # Команды для запуска и управления
-├── pyproject.toml        # Конфигурация проекта для uv
+├── pyproject.toml        # Конфигурация проекта для uv + mypy + ruff
+├── pytest.ini            # Конфигурация pytest и маркеры тестов
 ├── uv.lock               # Lockfile зависимостей
+├── .cursor/
+│   └── rules/            # Правила для AI-ассистента
+│       ├── conventions.mdc
+│       ├── workflow.mdc
+│       └── workflow_tech_debt.mdc
 ├── docs/
 │   ├── idea.md
-│   └── vision.md
+│   ├── vision.md
+│   ├── tasklist.md
+│   └── tasklist_tech_dept.md
 ├── src/
+│   ├── __init__.py
 │   ├── main.py           # Точка входа приложения
 │   ├── config.py         # Класс Config - конфигурация из .env
 │   ├── bot.py            # Класс TelegramBot - инициализация бота
 │   ├── handlers.py       # Класс MessageHandler - обработка сообщений
-│   ├── llm_client.py     # Класс LLMClient - работа с OpenRouter
-│   └── conversation.py   # Класс Conversation - контекст диалога
+│   ├── llm_client.py     # Класс LLMClient + LLMError - работа с OpenRouter
+│   └── conversation.py   # Класс Conversation - контекст диалога (defaultdict)
 └── tests/
     ├── __init__.py
     ├── test_config.py
@@ -73,19 +86,21 @@ systech-aidd/
 ### Описание компонентов
 
 **Основные модули:**
-1. **main.py** - запуск приложения, инициализация и старт polling
-2. **config.py** - загрузка и валидация конфигурации (токены, API ключи)
+1. **main.py** - запуск приложения, инициализация и старт polling (запускается как модуль: `python -m src.main`)
+2. **config.py** - загрузка и валидация конфигурации через Pydantic BaseSettings (токены, API ключи)
 3. **bot.py** - инициализация Telegram бота и регистрация handlers
-4. **handlers.py** - обработчики Telegram сообщений (/start, текстовые сообщения)
-5. **llm_client.py** - взаимодействие с LLM через OpenRouter
-6. **conversation.py** - управление историей диалога пользователя (в памяти)
+4. **handlers.py** - обработчики Telegram сообщений (/start, /reset, текстовые сообщения) + обработка исключений LLM
+5. **llm_client.py** - взаимодействие с LLM через OpenRouter + класс исключения LLMError
+6. **conversation.py** - управление историей диалога пользователя (в памяти через defaultdict)
 
 **Тестирование:**
-- Юнит-тесты для каждого основного компонента
-- Использование pytest с async поддержкой
-- Моки для внешних API (Telegram, OpenRouter)
+- Юнит-тесты для каждого основного компонента (не зависят от .env)
+- Интеграционные тесты помечены маркером `@pytest.mark.integration`
+- Использование pytest с async поддержкой (pytest-asyncio)
+- Моки для внешних API (Telegram, OpenRouter) в юнит-тестах
+- Измерение покрытия кода через pytest-cov (цель: 45%+)
 
-**Всего 6 файлов кода + тесты** - минимально и достаточно для MVP.
+**Всего 6 файлов кода + тесты + строгая типизация** - минимально и достаточно для MVP с высоким качеством кода.
 
 ## 4. Архитектура проекта
 
@@ -132,9 +147,10 @@ systech-aidd/
 
 - **Config** - независимый, используется всеми
 - **TelegramBot** - зависит только от Config
-- **LLMClient** - зависит только от Config
-- **MessageHandler** - зависит от LLMClient и Conversation
-- **Conversation** - независимый, простое хранилище в памяти
+- **LLMClient** - зависит только от Config, бросает исключения (не возвращает UI-сообщения)
+- **MessageHandler** - зависит от LLMClient и Conversation, обрабатывает все исключения LLM
+- **Conversation** - независимый, использует defaultdict для автоматического создания списков
+- **Относительные импорты** - все модули используют относительные импорты (from .config import Config)
 
 ### Особенности
 
@@ -171,9 +187,12 @@ timeout: int = 60                 # Таймаут запросов к API (се
 ### Conversation Storage (in-memory)
 
 ```python
-conversations: dict[str, list[dict]]
+from collections import defaultdict
+
+conversations: defaultdict[str, list[dict]] = defaultdict(list)
 # Ключ: "chat_id:user_id" (составной ключ)
 # Значение: список сообщений (история диалога)
+# defaultdict автоматически создает пустой список для новых пользователей
 ```
 
 ### Пример структуры данных
@@ -206,10 +225,25 @@ conversations: dict[str, list[dict]]
 
 ### LLMClient - основной класс
 
+**Исключения:**
+```python
+class LLMError(Exception):
+    """Базовое исключение для ошибок LLM."""
+```
+
 **Основной метод:**
 ```python
-async def get_response(self, messages: list[dict]) -> str
+async def get_response(
+    self, 
+    messages: list[dict[str, str]], 
+    system_prompt: str | None = None
+) -> str
 ```
+
+**Raises:**
+- `Timeout` - если запрос превысил таймаут
+- `APIError` - если произошла ошибка OpenRouter API
+- `LLMError` - другие ошибки (пустой ответ, неожиданные исключения)
 
 ### Реализация
 
@@ -230,14 +264,19 @@ async def get_response(self, messages: list[dict]) -> str
    - `max_tokens` - из конфига
    - `timeout` - из конфига
 
-4. **Обработка ошибок:**
-   - Timeout - возвращаем "Превышено время ожидания ответа"
-   - API Error - логируем и возвращаем "Ошибка при обращении к LLM"
-   - Network Error - возвращаем "Проблемы с сетью, попробуйте позже"
+4. **Обработка ошибок (Single Responsibility Principle):**
+   - **LLMClient** бросает исключения: `Timeout`, `APIError`, `LLMError`
+   - **MessageHandler** перехватывает исключения и отправляет UI-сообщения пользователю:
+     - `Timeout` → "⏱️ Превышено время ожидания ответа"
+     - `APIError` → "❌ Ошибка API: {детали}"
+     - `LLMError` → "❌ Ошибка LLM: {детали}"
+   - Все ошибки логируются на уровне ERROR с полным трейсбеком
 
 ### Особенности
 
 - **Простой интерфейс** - один метод для всего
+- **Разделение ответственности** - LLMClient не знает о UI, только бросает исключения
+- **Строгая типизация** - все параметры и возвращаемые значения типизированы
 - **Без retry** - пока не усложняем (можно добавить потом)
 - **Без streaming** - получаем полный ответ сразу
 - **Без кеширования** - каждый запрос новый
@@ -247,12 +286,26 @@ async def get_response(self, messages: list[dict]) -> str
 ### Пример использования
 
 ```python
+from openai import APIError, Timeout
+from .llm_client import LLMClient, LLMError
+
 llm_client = LLMClient(config)
-messages = [
-    {"role": "system", "content": "Ты помощник..."},
-    {"role": "user", "content": "Привет!"}
-]
-response = await llm_client.get_response(messages)
+messages = [{"role": "user", "content": "Привет!"}]
+
+try:
+    response = await llm_client.get_response(
+        messages=messages,
+        system_prompt="Ты помощник..."
+    )
+except Timeout:
+    # Обрабатываем таймаут
+    logger.error("LLM timeout")
+except APIError as e:
+    # Обрабатываем ошибку API
+    logger.error(f"API error: {e}")
+except LLMError as e:
+    # Обрабатываем другие ошибки LLM
+    logger.error(f"LLM error: {e}")
 ```
 
 ## 7. Сценарии работы
@@ -300,8 +353,12 @@ response = await llm_client.get_response(messages)
 
 ### Сценарий 6: Обработка ошибок
 
-1. Если LLM не отвечает - пользователь получает сообщение об ошибке
-2. История сохраняется, пользователь может повторить запрос
+1. LLMClient бросает исключение (Timeout, APIError, или LLMError)
+2. MessageHandler перехватывает исключение
+3. Логирует ошибку с полным трейсбеком на уровне ERROR
+4. Отправляет понятное сообщение об ошибке пользователю
+5. История сообщений сохраняется, пользователь может повторить запрос
+6. При критических ошибках пользователю предлагается использовать /reset
 
 ### Доступные команды
 
@@ -352,10 +409,11 @@ MAX_HISTORY_LENGTH=10
 
 ### Класс Config
 
-- Использует **Pydantic BaseSettings**
+- Использует **Pydantic BaseSettings** с **SettingsConfigDict**
 - Автоматически загружает переменные из `.env`
 - Валидирует типы данных при запуске
 - Падает с понятной ошибкой, если обязательные параметры не заданы
+- Полностью типизирован для mypy strict mode
 
 ### Особенности
 
@@ -408,24 +466,82 @@ MAX_HISTORY_LENGTH=10
 ### Пример логов
 
 ```
-2024-10-10 12:00:00 - bot - INFO - Bot started
-2024-10-10 12:00:05 - handlers - INFO - Message from user 123456 in chat 789: "Привет, как дела?..."
-2024-10-10 12:00:07 - llm_client - INFO - LLM response received (150 tokens)
-2024-10-10 12:00:08 - handlers - INFO - Response sent to user 123456
-2024-10-10 12:01:00 - handlers - INFO - Command /reset from user 123456 in chat 789
-2024-10-10 12:02:00 - llm_client - ERROR - OpenRouter API timeout after 60s
+2025-10-11 12:29:36 - __main__ - INFO - Configuration loaded successfully
+2025-10-11 12:29:36 - src.conversation - INFO - Conversation storage initialized
+2025-10-11 12:29:36 - src.llm_client - INFO - LLM client initialized with model: openai/gpt-oss-20b:free
+2025-10-11 12:29:36 - src.bot - INFO - Telegram bot initialized
+2025-10-11 12:29:36 - src.handlers - INFO - MessageHandler initialized
+2025-10-11 12:29:36 - src.bot - INFO - Handlers registered
+2025-10-11 12:29:36 - __main__ - INFO - Starting bot polling...
+2025-10-11 12:29:36 - aiogram.dispatcher - INFO - Start polling
+2025-10-11 12:29:37 - src.handlers - INFO - Message from user 1716154677 in chat 1716154677, length: 20
+2025-10-11 12:29:37 - src.llm_client - INFO - Sending request to LLM: 2 messages, model: openai/gpt-oss-20b:free
+2025-10-11 12:29:41 - src.llm_client - INFO - LLM response received, length: 21 chars
+2025-10-11 12:29:41 - src.handlers - INFO - Response sent to user 1716154677, length: 21
+2025-10-11 12:32:10 - src.handlers - INFO - Command /reset from user 1716154677 in chat 1716154677
+2025-10-11 12:35:00 - src.handlers - ERROR - LLM timeout for user 1716154677
 ```
+
+---
+
+## 10. Команды разработки (Makefile)
+
+### Основные команды
+
+```bash
+# Установка зависимостей
+make install          # uv sync
+
+# Запуск бота
+make run              # uv run python -m src.main
+
+# Проверка кода
+make lint             # ruff check + mypy (strict mode)
+make format           # ruff format
+
+# Тестирование
+make test             # Все тесты + coverage (HTML отчет)
+make test-unit        # Только юнит-тесты (не требуют .env)
+make test-integration # Только интеграционные тесты
+
+# CI/CD
+make ci               # lint + test-unit (для pre-commit проверки)
+```
+
+### Качество кода
+
+**Текущие метрики:**
+- ✅ **Ruff**: All checks passed (правила: E, F, I, N, W, B, C4, UP, SIM, RET, ARG)
+- ✅ **Mypy**: Success (strict mode, 100% typed)
+- ✅ **Tests**: 20 юнит-тестов + 13 интеграционных
+- ✅ **Coverage**: 46% общий (100% для config.py и conversation.py)
+
+**Цели:**
+- Ruff: 0 ошибок
+- Mypy: строгая типизация всех модулей
+- Coverage: минимум 45%, цель 80%+
+- Тесты: все юнит-тесты не зависят от внешних ресурсов
 
 ---
 
 ## Итого
 
-Данный документ описывает техническое видение для создания простого LLM-ассистента в виде Telegram-бота. Следуя принципам KISS и ООП, мы получаем:
+Данный документ описывает техническое видение для создания простого LLM-ассистента в виде Telegram-бота. Следуя принципам KISS и ООП, с применением современных практик разработки, мы получаем:
 
 - **6 файлов кода** (main, config, bot, handlers, llm_client, conversation)
 - **Минимум зависимостей** (aiogram, openai, pydantic, python-dotenv)
 - **Простая архитектура** без избыточных абстракций
+- **Строгая типизация** (mypy strict mode)
+- **Качественные тесты** (юнит + интеграционные)
+- **Автоматизация проверок** (make ci)
 - **Готовность к запуску** за минимальное время
+
+**Принципы качества кода:**
+1. **SRP** - каждый класс имеет одну ответственность (error handling в handlers, не в llm_client)
+2. **Типизация** - все функции и методы полностью типизированы
+3. **Тестируемость** - юнит-тесты независимы от окружения
+4. **Простота** - defaultdict вместо явных проверок
+5. **CI/CD готовность** - make ci для быстрой проверки перед коммитом
 
 Этот проект служит основой для быстрой проверки идеи и может быть легко расширен в будущем при необходимости.
 
