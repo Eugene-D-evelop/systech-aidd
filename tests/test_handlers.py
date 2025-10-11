@@ -66,7 +66,8 @@ async def test_start_command(message_handler):
 
     # Проверяем содержание ответа
     assert "Привет" in response_text
-    assert "AI-ассистент" in response_text
+    assert "Python Code Reviewer" in response_text
+    assert "/role" in response_text
     assert "/reset" in response_text
 
 
@@ -390,3 +391,48 @@ async def test_reset_command_without_user(message_handler):
 
     # answer не должен быть вызван
     mock_message.answer.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_role_command(message_handler):
+    """Тест обработчика команды /role."""
+    # Arrange
+    mock_message = MagicMock(spec=types.Message)
+    mock_message.from_user = MagicMock(spec=types.User)
+    mock_message.from_user.id = 123
+    mock_message.chat = MagicMock(spec=types.Chat)
+    mock_message.chat.id = 456
+    mock_message.answer = AsyncMock()
+
+    # Act
+    await message_handler.role_command(mock_message)
+
+    # Assert
+    mock_message.answer.assert_called_once()
+    call_args = mock_message.answer.call_args
+    response_text = call_args[0][0]
+
+    # Проверяем структуру ответа
+    assert "🎭" in response_text
+    assert "Моя роль" in response_text or "роль" in response_text.lower()
+    assert "Специализация" in response_text or "специализация" in response_text.lower()
+    assert "Python" in response_text
+    assert "Что я умею" in response_text or "умею" in response_text.lower()
+    assert "Ограничения" in response_text or "ограничения" in response_text.lower()
+
+
+@pytest.mark.asyncio
+async def test_role_command_without_user(message_handler):
+    """Тест команды /role без пользователя (edge case)."""
+    # Arrange
+    mock_message = MagicMock(spec=types.Message)
+    mock_message.from_user = None
+    mock_message.chat = MagicMock(spec=types.Chat)
+    mock_message.chat.id = 123
+    mock_message.answer = AsyncMock()
+
+    # Act - не должно быть ошибок
+    await message_handler.role_command(mock_message)
+
+    # Assert - ответ все равно должен быть отправлен
+    mock_message.answer.assert_called_once()

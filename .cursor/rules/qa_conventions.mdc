@@ -1,0 +1,269 @@
+---
+alwaysApply: false
+---
+# QA Автоматизация (TDD)
+
+> Применять при разработке тестов. Основные соглашения: @conventions.md
+
+## Принципы TDD
+
+1. **Red → Green → Refactor** - тест сначала, минимальная реализация, затем улучшение
+2. **Тестируем поведение, не реализацию** - фокус на public API
+3. **Только критичный функционал** - избегаем бессмысленных/boilerplate тестов
+4. **KISS > 100% coverage** - простота важнее метрик
+
+## Что тестировать
+
+### ✅ Обязательно
+- Критичные бизнес-сценарии (отправка сообщений, получение ответов LLM)
+- Граничные случаи (None, пустые строки, отсутствие обязательных полей)
+- Обработка ошибок (Timeout, APIError, NetworkError)
+- Интеграции с внешними API (мокировать)
+
+### ❌ Не тестируем
+- Тривиальные getter/setter без логики
+- Библиотечный код (aiogram, openai SDK)
+- Простые dataclass/Pydantic модели без валидации
+- Константы и конфиги (если нет логики)
+
+## Структура тестов
+
+### Организация файлов
+```
+tests/
+├── test_<module>.py       # Юнит-тесты (быстрые, без .env)
+└── test_<module>_integration.py  # Интеграционные (медленные, требуют .env)
+```
+
+### Именование
+- Файлы: `test_<module>.py`
+- Функции: `test_<action>_<scenario>` (test_handle_message_timeout_error)
+- Фикстуры: существительные без префиксов (config, llm_client)
+
+### Структура теста (AAA)
+```python
+@pytest.mark.asyncio
+async def test_handle_message_success(message_handler):
+    # Arrange - подготовка данных
+    mock_message = create_mock_message(text="Hello")
+    
+    # Act - выполнение действия
+    await message_handler.handle_message(mock_message)
+    
+    # Assert - проверка результата
+    mock_message.answer.assert_called_once()
+```
+
+## Фикстуры
+
+### Правила
+- **Переиспользование**: общие фикстуры в conftest.py
+- **Изоляция**: каждый тест работает с чистым состоянием
+- **Минимализм**: фикстуры без избыточной логики
+
+### Примеры
+```python
+@pytest.fixture
+def config():
+    """Минимальная валидная конфигурация."""
+    return Config(
+        telegram_bot_token="test_token",
+        openrouter_api_key="test_key",
+        openrouter_model="test/model",
+        system_prompt="Test prompt",
+    )
+
+@pytest.fixture
+def mock_message():
+    """Базовый мок Telegram сообщения."""
+    message = MagicMock(spec=types.Message)
+    message.chat.id = 123
+    message.from_user.id = 456
+    message.text = "Test"
+    message.answer = AsyncMock()
+    return message
+```
+
+## Моки (unittest.mock)
+
+### AsyncMock vs MagicMock
+```python
+# Async функции/методы
+mock_obj.async_method = AsyncMock(return_value="result")
+
+# Sync функции/методы
+mock_obj.sync_method = MagicMock(return_value="result")
+```
+
+### Патчинг
+```python
+# Предпочитаем patch.object (явная зависимость)
+with patch.object(handler.llm_client, "get_response", side_effect=APITimeoutError()):
+    await handler.handle_message(message)
+
+# Избегаем patch("module.path") (неявные зависимости)
+```
+
+### Spec для типобезопасности
+```python
+# ✅ С spec - mypy проверяет атрибуты
+mock_msg = MagicMock(spec=types.Message)
+
+# ❌ Без spec - можно обратиться к несуществующим атрибутам
+mock_msg = MagicMock()
+```
+
+## Маркеры pytest
+
+```python
+@pytest.mark.asyncio              # Async тест
+@pytest.mark.integration          # Интеграционный (требует .env)
+@pytest.mark.slow                 # Медленный тест (> 1 сек)
+```
+
+### Запуск
+```bash
+pytest -m "not integration"       # Только юнит-тесты (CI/CD)
+pytest -m integration             # Только интеграционные
+pytest -m "not slow"              # Быстрые тесты
+```
+
+## Обработка ошибок
+
+### Проверка исключений
+```python
+# Ожидаем конкретное исключение
+with pytest.raises(LLMError, match="Empty response"):
+    await llm_client.get_response([])
+```
+
+### Тестируем все error handlers
+- APITimeoutError → сообщение о таймауте
+- APIError → сообщение об ошибке API
+- LLMError → сообщение об ошибке LLM
+- Unexpected → общее сообщение об ошибке
+
+## Граничные случаи
+
+Обязательно тестируем:
+```python
+# None значения
+test_handle_message_without_text()
+test_handle_message_without_user()
+
+# Пустые коллекции
+test_get_history_empty()
+
+# Лимиты
+test_max_history_length_exceeded()
+```
+
+## Coverage метрики
+
+### Целевые показатели
+- **Ключевые модули**: 100% (config, conversation, handlers, bot)
+- **LLM клиент**: 80%+ (исключаем редкие edge cases)
+- **Общий**: 80%+ (игнорируем main.py)
+
+### Команды
+```bash
+pytest --cov=src --cov-report=html   # HTML отчет
+pytest --cov=src --cov-report=term   # Терминал
+```
+
+### Не гонимся за 100%
+Игнорируем:
+- `if __name__ == "__main__"` блоки
+- Логирование и debug код
+- Defensive checks (типа `if x is None: raise`)
+
+## Антипаттерны
+
+### ❌ НЕ делать
+```python
+# Тестирование реализации (вместо поведения)
+assert handler._private_method() == "value"
+
+# Избыточные тесты без ценности
+def test_config_has_telegram_token(config):
+    assert config.telegram_bot_token is not None  # Бесполезно
+
+# Зависимые тесты
+def test_step_2():
+    # Зависит от результата test_step_1
+    
+# Магические значения без контекста
+assert result == 42  # Почему 42?
+```
+
+### ✅ Делать
+```python
+# Тестируем публичное поведение
+await handler.handle_message(message)
+assert message.answer.called
+
+# Тесты с ясным бизнес-смыслом
+def test_reset_clears_conversation_history():
+    conversation.add_message(1, 2, "user", "Hi")
+    conversation.reset(1, 2)
+    assert len(conversation.get_history(1, 2)) == 0
+
+# Независимые тесты с фикстурами
+@pytest.fixture
+def fresh_conversation():
+    return Conversation()
+
+# Явные значения с комментариями
+assert len(history) == 2  # user + assistant
+```
+
+## Типизация в тестах
+
+```python
+# Type hints для ясности
+def test_get_response(llm_client: LLMClient) -> None:
+    response: str = await llm_client.get_response([])
+    assert isinstance(response, str)
+
+# Spec для моков соответствует реальным типам
+mock_handler: MessageHandler = MagicMock(spec=MessageHandler)
+```
+
+## Интеграционные тесты
+
+### Особенности
+- Требуют `.env` с валидными API ключами
+- Медленные (запросы к реальным API)
+- Проверяют работу всей цепочки
+- Помечаются `@pytest.mark.integration`
+
+### Пример
+```python
+@pytest.mark.asyncio
+@pytest.mark.integration
+@pytest.mark.slow
+async def test_full_conversation_flow(message_handler):
+    """Полный цикл: сообщение → LLM → ответ → история."""
+    mock_message = create_mock_message("Hello")
+    
+    await message_handler.handle_message(mock_message)
+    
+    # Проверяем взаимодействие всех компонентов
+    mock_message.answer.assert_called_once()
+    assert len(conversation.get_history(123, 456)) == 2
+```
+
+## Чеклист перед коммитом
+
+- [ ] Все тесты проходят: `make test-unit`
+- [ ] Coverage ключевых модулей 100%
+- [ ] Нет избыточных/бессмысленных тестов
+- [ ] Async тесты помечены `@pytest.mark.asyncio`
+- [ ] Интеграционные тесты помечены `@pytest.mark.integration`
+- [ ] Типизация всех тестовых функций
+- [ ] Моки используют `spec=` для типобезопасности
+- [ ] Фикстуры переиспользуются (DRY)
+
+---
+
+**При написании тестов: Red → Green → Refactor. Тестируй поведение, а не реализацию. KISS > метрики.**

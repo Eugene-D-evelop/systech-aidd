@@ -44,6 +44,7 @@ def test_register_handlers(config):
     # Создаем мок MessageHandler
     mock_handler = MagicMock(spec=MessageHandler)
     mock_handler.start_command = MagicMock()
+    mock_handler.role_command = MagicMock()
     mock_handler.reset_command = MagicMock()
     mock_handler.handle_message = MagicMock()
 
@@ -53,9 +54,9 @@ def test_register_handlers(config):
     # Регистрируем handlers
     bot.register_handlers(mock_handler)
 
-    # Проверяем что register был вызван 3 раза
-    # (start_command, reset_command, handle_message)
-    assert bot.dp.message.register.call_count == 3
+    # Проверяем что register был вызван 4 раза
+    # (start_command, role_command, reset_command, handle_message)
+    assert bot.dp.message.register.call_count == 4
 
 
 def test_register_handlers_order(config):
@@ -77,16 +78,19 @@ def test_register_handlers_order(config):
     bot.register_handlers(mock_handler)
 
     # Проверяем порядок регистрации
-    assert len(register_calls) == 3
+    assert len(register_calls) == 4
 
     # Первый должен быть start_command
     assert register_calls[0][0] == mock_handler.start_command
 
-    # Второй должен быть reset_command
-    assert register_calls[1][0] == mock_handler.reset_command
+    # Второй должен быть role_command
+    assert register_calls[1][0] == mock_handler.role_command
 
-    # Третий должен быть handle_message (без команды - должен быть последним)
-    assert register_calls[2][0] == mock_handler.handle_message
+    # Третий должен быть reset_command
+    assert register_calls[2][0] == mock_handler.reset_command
+
+    # Четвертый должен быть handle_message (без команды - должен быть последним)
+    assert register_calls[3][0] == mock_handler.handle_message
 
 
 @pytest.mark.asyncio
