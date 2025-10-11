@@ -69,7 +69,7 @@ systech-aidd/
 ├── uv.lock               # Lockfile зависимостей
 ├── .cursor/
 │   └── rules/            # Правила для AI-ассистента
-│       ├── convertions.mdc    # Соглашения по коду
+│       ├── conventions.mdc    # Соглашения по коду
 │       ├── qa_conventions.mdc # QA соглашения и TDD
 │       ├── workflow.mdc       # Базовый процесс разработки
 │       └── workflow_tdd.mdc   # TDD процесс разработки
