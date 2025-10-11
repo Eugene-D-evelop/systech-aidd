@@ -5,7 +5,7 @@ LLM-ассистент в виде Telegram-бота через OpenRouter API
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](http://mypy-lang.org/)
-[![Coverage](https://img.shields.io/badge/coverage-46%25-yellow.svg)](https://github.com/pytest-dev/pytest-cov)
+[![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen.svg)](https://github.com/pytest-dev/pytest-cov)
 
 ## 🚀 Быстрый старт
 
@@ -141,13 +141,13 @@ make test-integration
 |--------|----------|--------|
 | `config.py` | 100% | ✅ |
 | `conversation.py` | 100% | ✅ |
-| `handlers.py` | 52% | ⚠️ |
-| `llm_client.py` | 35% | ⚠️ |
-| `bot.py` | 0% | ⚠️ |
+| `handlers.py` | 100% | ✅ |
+| `bot.py` | 100% | ✅ |
+| `llm_client.py` | 80% | ✅ |
 | `main.py` | 0% | ⚠️ |
-| **Всего** | **46%** | ✅ |
+| **Всего** | **81%** | ✅ |
 
-Цель: **80%+** (требуются дополнительные интеграционные тесты)
+**Цель достигнута!** 🎉 Покрытие превышает 80%
 
 ## 📦 Технологии
 
@@ -195,8 +195,8 @@ make test-integration
 
 - ✅ **Ruff**: 0 ошибок (All checks passed)
 - ✅ **Mypy**: Success (strict mode, 100% typed)
-- ✅ **Tests**: 20 юнит + 13 интеграционных
-- ✅ **Coverage**: 46% (100% для core модулей)
+- ✅ **Tests**: 58 тестов (56 юнит + 2 интеграционных)
+- ✅ **Coverage**: 81% (100% для ключевых модулей)
 
 ### Принципы
 
