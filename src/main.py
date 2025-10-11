@@ -5,11 +5,11 @@ import logging
 
 from dotenv import load_dotenv
 
-from src.bot import TelegramBot
-from src.config import Config
-from src.conversation import Conversation
-from src.handlers import MessageHandler
-from src.llm_client import LLMClient
+from .bot import TelegramBot
+from .config import Config
+from .conversation import Conversation
+from .handlers import MessageHandler
+from .llm_client import LLMClient
 
 # Настройка логирования
 logging.basicConfig(
@@ -20,7 +20,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def main():
+async def main() -> None:
     """Главная функция приложения."""
     # Загружаем переменные окружения из .env
     load_dotenv()
@@ -54,4 +54,3 @@ if __name__ == "__main__":
         logger.info("Bot stopped by user")
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
-

@@ -2,6 +2,8 @@
 
 import logging
 import time
+from collections import defaultdict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -9,9 +11,9 @@ logger = logging.getLogger(__name__)
 class Conversation:
     """Класс для управления историей диалогов пользователей."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Инициализация хранилища диалогов."""
-        self.conversations: dict[str, list[dict]] = {}
+        self.conversations: dict[str, list[dict[str, Any]]] = defaultdict(list)
         logger.info("Conversation storage initialized")
 
     def _get_user_key(self, chat_id: int, user_id: int) -> str:
@@ -37,9 +39,6 @@ class Conversation:
         """
         user_key = self._get_user_key(chat_id, user_id)
 
-        if user_key not in self.conversations:
-            self.conversations[user_key] = []
-
         message = {
             "role": role,
             "content": content,
@@ -51,7 +50,7 @@ class Conversation:
 
     def get_history(
         self, chat_id: int, user_id: int, limit: int | None = None
-    ) -> list[dict]:
+    ) -> list[dict[str, str]]:
         """Получение истории диалога пользователя.
 
         Args:
@@ -109,4 +108,3 @@ class Conversation:
             "total_users": total_users,
             "total_messages": total_messages,
         }
-

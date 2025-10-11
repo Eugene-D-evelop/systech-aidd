@@ -1,7 +1,5 @@
 """Тесты для модуля conversation."""
 
-import time
-
 import pytest
 
 from src.conversation import Conversation
@@ -172,4 +170,3 @@ def test_user_key_generation(conversation):
     assert len(history2) == 1
     assert history1[0]["content"] == "Chat 1"
     assert history2[0]["content"] == "Chat 2"
-

@@ -1,12 +1,19 @@
 """Клиент для работы с LLM через OpenRouter API."""
 
 import logging
+from typing import Any
 
-from openai import APIError, AsyncOpenAI, Timeout
+from openai import APIError, APITimeoutError, AsyncOpenAI
 
-from src.config import Config
+from .config import Config
 
 logger = logging.getLogger(__name__)
+
+
+class LLMError(Exception):
+    """Базовое исключение для ошибок LLM."""
+
+    pass
 
 
 class LLMClient:
@@ -26,7 +33,7 @@ class LLMClient:
         logger.info(f"LLM client initialized with model: {config.openrouter_model}")
 
     async def get_response(
-        self, messages: list[dict], system_prompt: str | None = None
+        self, messages: list[dict[str, str]], system_prompt: str | None = None
     ) -> str:
         """Получение ответа от LLM.
 
@@ -40,28 +47,28 @@ class LLMClient:
         Raises:
             Timeout: Если запрос превысил таймаут
             APIError: Если произошла ошибка API
-            Exception: Другие ошибки
+            LLMError: Другие ошибки LLM (пустой ответ, неожиданные ошибки)
         """
+        # Формируем полный список сообщений
+        full_messages: list[dict[str, Any]] = []
+
+        # Добавляем системный промпт, если указан
+        if system_prompt:
+            full_messages.append({"role": "system", "content": system_prompt})
+
+        # Добавляем историю сообщений
+        full_messages.extend(messages)
+
+        logger.info(
+            f"Sending request to LLM: {len(full_messages)} messages, "
+            f"model: {self.config.openrouter_model}"
+        )
+
         try:
-            # Формируем полный список сообщений
-            full_messages = []
-
-            # Добавляем системный промпт, если указан
-            if system_prompt:
-                full_messages.append({"role": "system", "content": system_prompt})
-
-            # Добавляем историю сообщений
-            full_messages.extend(messages)
-
-            logger.info(
-                f"Sending request to LLM: {len(full_messages)} messages, "
-                f"model: {self.config.openrouter_model}"
-            )
-
             # Отправляем запрос к LLM
             response = await self.client.chat.completions.create(
                 model=self.config.openrouter_model,
-                messages=full_messages,
+                messages=full_messages,  # type: ignore[arg-type]
                 temperature=self.config.temperature,
                 max_tokens=self.config.max_tokens,
                 timeout=self.config.timeout,
@@ -72,31 +79,19 @@ class LLMClient:
 
             if not answer:
                 logger.warning("LLM returned empty response")
-                return "Извините, я не смог сгенерировать ответ. Попробуйте еще раз."
+                raise LLMError("Empty response from LLM")
 
             logger.info(f"LLM response received, length: {len(answer)} chars")
             return answer
 
-        except Timeout as e:
-            logger.error(f"LLM request timeout: {e}", exc_info=True)
-            return (
-                f"⏱️ Превышено время ожидания ответа ({self.config.timeout}с). "
-                "Попробуйте снова."
-            )
-
-        except APIError as e:
-            logger.error(f"LLM API error: {e}", exc_info=True)
-            return (
-                f"❌ Ошибка API: {str(e)}\n"
-                "Пожалуйста, попробуйте позже или проверьте конфигурацию."
-            )
+        except (APITimeoutError, APIError):
+            # Пробрасываем специфичные ошибки как есть
+            raise
 
         except Exception as e:
+            # Оборачиваем неожиданные ошибки в LLMError
             logger.error(f"Unexpected error in LLM request: {e}", exc_info=True)
-            return (
-                f"❌ Произошла непредвиденная ошибка: {str(e)}\n"
-                "Пожалуйста, попробуйте позже."
-            )
+            raise LLMError(f"Unexpected error: {e}") from e
 
     async def test_connection(self) -> bool:
         """Тестирование подключения к LLM API.
@@ -112,4 +107,3 @@ class LLMClient:
         except Exception as e:
             logger.error(f"LLM connection test failed: {e}")
             return False
-

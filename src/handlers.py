@@ -3,10 +3,11 @@
 import logging
 
 from aiogram import types
+from openai import APIError, APITimeoutError
 
-from src.config import Config
-from src.conversation import Conversation
-from src.llm_client import LLMClient
+from .config import Config
+from .conversation import Conversation
+from .llm_client import LLMClient, LLMError
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class MessageHandler:
         self.conversation = conversation
         logger.info("MessageHandler initialized")
 
-    async def start_command(self, message: types.Message):
+    async def start_command(self, message: types.Message) -> None:
         """Обработчик команды /start.
 
         Args:
@@ -47,7 +48,7 @@ class MessageHandler:
         await message.answer(welcome_text)
         logger.info(f"Welcome message sent to user {user_id}")
 
-    async def reset_command(self, message: types.Message):
+    async def reset_command(self, message: types.Message) -> None:
         """Обработчик команды /reset - очистка истории диалога.
 
         Args:
@@ -63,15 +64,12 @@ class MessageHandler:
         # Очищаем историю диалога
         self.conversation.clear_history(chat_id, user_id)
 
-        reset_text = (
-            "🔄 <b>История диалога очищена!</b>\n\n"
-            "Можете начать новый разговор."
-        )
+        reset_text = "🔄 <b>История диалога очищена!</b>\n\nМожете начать новый разговор."
 
         await message.answer(reset_text)
         logger.info(f"History cleared for user {user_id}")
 
-    async def handle_message(self, message: types.Message):
+    async def handle_message(self, message: types.Message) -> None:
         """Обработчик текстовых сообщений.
 
         Args:
@@ -84,10 +82,7 @@ class MessageHandler:
         chat_id = message.chat.id
         user_message = message.text
 
-        logger.info(
-            f"Message from user {user_id} in chat {chat_id}, "
-            f"length: {len(user_message)}"
-        )
+        logger.info(f"Message from user {user_id} in chat {chat_id}, length: {len(user_message)}")
 
         # Сохраняем сообщение пользователя в историю
         self.conversation.add_message(chat_id, user_id, "user", user_message)
@@ -98,7 +93,8 @@ class MessageHandler:
         )
 
         # Отправляем "typing..." индикатор
-        await message.bot.send_chat_action(chat_id, "typing")
+        if message.bot:
+            await message.bot.send_chat_action(chat_id, "typing")
 
         try:
             # Получаем ответ от LLM
@@ -114,10 +110,35 @@ class MessageHandler:
 
             logger.info(f"Response sent to user {user_id}, length: {len(llm_response)}")
 
-        except Exception as e:
-            logger.error(f"Error handling message from user {user_id}: {e}", exc_info=True)
+        except APITimeoutError:
+            logger.error(f"LLM timeout for user {user_id}", exc_info=True)
             error_text = (
-                "❌ Произошла ошибка при обработке сообщения.\n"
+                f"⏱️ Превышено время ожидания ответа ({self.config.timeout}с).\nПопробуйте снова."
+            )
+            await message.answer(error_text)
+
+        except APIError as e:
+            logger.error(f"LLM API error for user {user_id}: {e}", exc_info=True)
+            error_text = (
+                f"❌ Ошибка API: {str(e)}\nПожалуйста, попробуйте позже или используйте /reset."
+            )
+            await message.answer(error_text)
+
+        except LLMError as e:
+            logger.error(f"LLM error for user {user_id}: {e}", exc_info=True)
+            error_text = (
+                f"❌ Ошибка LLM: {str(e)}\n"
+                "Попробуйте еще раз или используйте /reset для сброса диалога."
+            )
+            await message.answer(error_text)
+
+        except Exception as e:
+            logger.error(
+                f"Unexpected error handling message from user {user_id}: {e}",
+                exc_info=True,
+            )
+            error_text = (
+                "❌ Произошла непредвиденная ошибка.\n"
                 "Попробуйте еще раз или используйте /reset для сброса диалога."
             )
             await message.answer(error_text)
