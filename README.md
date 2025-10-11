@@ -206,7 +206,7 @@ make test-integration
 - [Список задач](docs/tasklist.md) - основная разработка
 - [Технический долг](docs/tasklist_tech_dept.md) - рефакторинг (завершен)
 - [Правила разработки](.cursor/rules/) - соглашения для AI-ассистента
-  - [Соглашения по коду](.cursor/rules/convertions.mdc) - стиль и архитектура
+  - [Соглашения по коду](.cursor/rules/conventions.mdc) - стиль и архитектура
   - [QA соглашения](.cursor/rules/qa_conventions.mdc) - тестирование и TDD
   - [Workflow](.cursor/rules/workflow.mdc) - процесс разработки
   - [Workflow TDD](.cursor/rules/workflow_tdd.mdc) - разработка по TDD подходу
