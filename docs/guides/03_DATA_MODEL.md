@@ -338,7 +338,8 @@ Timestamp хранится для отладки, но **не отправляе
 
 ## Что дальше?
 
+- [Architecture Overview](02_ARCHITECTURE_OVERVIEW.md) - общая архитектура
+- [🎨 Архитектурная визуализация](../architecture_visualization.md) - диаграммы Data Flow и Storage Structure
 - [Integrations](04_INTEGRATIONS.md) - работа с внешними API
 - [Configuration](06_CONFIGURATION_AND_SECRETS.md) - настройка конфигурации
-- [Architecture Overview](02_ARCHITECTURE_OVERVIEW.md) - общая архитектура
 

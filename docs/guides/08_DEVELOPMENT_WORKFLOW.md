@@ -645,9 +645,10 @@ mock_message.answer = AsyncMock()
 ## Что дальше?
 
 - [Getting Started](01_GETTING_STARTED.md) - начало работы
+- [Architecture Overview](02_ARCHITECTURE_OVERVIEW.md) - архитектура проекта
+- [🎨 Архитектурная визуализация](../architecture_visualization.md) - TDD cycle и User Journey диаграммы
 - [CI/CD](07_CI_CD.md) - детали автоматизации
 - [Codebase Tour](05_CODEBASE_TOUR.md) - навигация по коду
-- [Architecture Overview](02_ARCHITECTURE_OVERVIEW.md) - архитектура проекта
 
 ---
 

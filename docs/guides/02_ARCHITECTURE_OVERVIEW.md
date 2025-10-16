@@ -322,6 +322,7 @@ from .llm_client import LLMClient
 
 ## Что дальше?
 
+- [🎨 Архитектурная визуализация](../architecture_visualization.md) - 12 диаграмм с разных точек зрения (C4, Sequence, State, Data Flow и др.)
 - [Data Model](03_DATA_MODEL.md) - структуры данных
 - [Codebase Tour](05_CODEBASE_TOUR.md) - навигация по коду
 - [Development Workflow](08_DEVELOPMENT_WORKFLOW.md) - процесс разработки

@@ -577,6 +577,7 @@ uv run pytest --cov=src --cov-report=term-missing
 ## Что дальше?
 
 - [Development Workflow](08_DEVELOPMENT_WORKFLOW.md) - процесс разработки
+- [🎨 Архитектурная визуализация](../architecture_visualization.md) - диаграмма CI/CD Pipeline
 - [Codebase Tour](05_CODEBASE_TOUR.md) - структура кода
 - [Getting Started](01_GETTING_STARTED.md) - быстрый старт
 

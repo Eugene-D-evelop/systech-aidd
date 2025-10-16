@@ -605,7 +605,8 @@ from .llm_client import LLMClient, LLMError
 
 ## Что дальше?
 
-- [Development Workflow](08_DEVELOPMENT_WORKFLOW.md) - как разрабатывать
 - [Architecture Overview](02_ARCHITECTURE_OVERVIEW.md) - общая архитектура
+- [🎨 Архитектурная визуализация](../architecture_visualization.md) - диаграммы классов и зависимостей модулей
+- [Development Workflow](08_DEVELOPMENT_WORKFLOW.md) - как разрабатывать
 - [CI/CD](07_CI_CD.md) - автоматизация проверок
 
