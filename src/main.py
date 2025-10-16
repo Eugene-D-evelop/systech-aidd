@@ -8,8 +8,10 @@ from dotenv import load_dotenv
 from .bot import TelegramBot
 from .config import Config
 from .conversation import Conversation
+from .database import Database
 from .handlers import MessageHandler
 from .llm_client import LLMClient
+from .migrations import run_migrations
 
 # Настройка логирования
 logging.basicConfig(
@@ -33,8 +35,17 @@ async def main() -> None:
         logger.error(f"Failed to load configuration: {e}")
         return
 
+    # Запускаем миграции базы данных
+    try:
+        logger.info("Running database migrations...")
+        run_migrations(config.database_url)
+    except Exception as e:
+        logger.error(f"Failed to run migrations: {e}")
+        return
+
     # Создаем компоненты приложения
-    conversation = Conversation()
+    database = Database(config.database_url, config.database_timeout)
+    conversation = Conversation(database)
     llm_client = LLMClient(config)
     bot = TelegramBot(config)
     message_handler = MessageHandler(config, llm_client, conversation)

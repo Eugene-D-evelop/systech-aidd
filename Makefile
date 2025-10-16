@@ -1,10 +1,19 @@
-.PHONY: install run lint format test test-unit test-integration ci
+.PHONY: install run lint format test test-unit test-integration ci migrate db-up db-down
 
 install:
 	uv sync
 
 run:
 	uv run python -m src.main
+
+migrate:
+	uv run python -m src.migrations
+
+db-up:
+	docker compose up -d postgres
+
+db-down:
+	docker compose down
 
 lint:
 	uv run ruff check src/ tests/
