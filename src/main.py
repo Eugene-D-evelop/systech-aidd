@@ -48,7 +48,7 @@ async def main() -> None:
     conversation = Conversation(database)
     llm_client = LLMClient(config)
     bot = TelegramBot(config)
-    message_handler = MessageHandler(config, llm_client, conversation)
+    message_handler = MessageHandler(config, llm_client, conversation, database)
 
     # Регистрируем обработчики
     bot.register_handlers(message_handler)

@@ -67,3 +67,4 @@ if __name__ == "__main__":
 
     run_migrations(config.database_url)
 
+
