@@ -36,9 +36,9 @@ def llm_client(config):
 
 
 @pytest.fixture
-def message_handler(config, llm_client, conversation):
+def message_handler(config, llm_client, conversation, database):
     """Фикстура для создания MessageHandler с реальными зависимостями."""
-    return MessageHandler(config, llm_client, conversation)
+    return MessageHandler(config, llm_client, conversation, database)
 
 
 @pytest.mark.asyncio
@@ -48,6 +48,12 @@ async def test_start_command(message_handler):
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 456
+    mock_message.from_user.username = "testuser"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 123
 
@@ -66,9 +72,11 @@ async def test_start_command(message_handler):
 
     # Проверяем содержание ответа
     assert "Привет" in response_text
+    assert "Test" in response_text  # Имя пользователя
     assert "Python Code Reviewer" in response_text
     assert "/role" in response_text
     assert "/reset" in response_text
+    assert "/me" in response_text  # Новая команда
 
 
 @pytest.mark.asyncio
@@ -213,12 +221,13 @@ async def test_handle_message_without_user(message_handler):
     mock_message.answer.assert_not_called()
 
 
-def test_message_handler_initialization(config, llm_client, conversation):
+def test_message_handler_initialization(config, llm_client, conversation, database):
     """Тест инициализации MessageHandler."""
-    handler = MessageHandler(config, llm_client, conversation)
+    handler = MessageHandler(config, llm_client, conversation, database)
     assert handler.config == config
     assert handler.llm_client == llm_client
     assert handler.conversation == conversation
+    assert handler.database == database
 
 
 @pytest.mark.asyncio
@@ -434,5 +443,179 @@ async def test_role_command_without_user(message_handler):
     # Act - не должно быть ошибок
     await message_handler.role_command(mock_message)
 
-    # Assert - ответ все равно должен быть отправлен
+    # Assert - ответ не должен быть отправлен (нет пользователя)
+    mock_message.answer.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_me_command(message_handler, database):
+    """Тест обработчика команды /me."""
+    # Arrange - создаем пользователя в БД
+    user_id = 800000
+    await database.upsert_user(
+        user_id=user_id,
+        username="me_test_user",
+        first_name="MeTest",
+        last_name="User",
+        language_code="ru",
+        is_premium=True,
+        is_bot=False,
+    )
+
+    # Добавляем несколько сообщений для статистики
+    await database.add_message(chat_id=900000, user_id=user_id, role="user", content="Test 1")
+    await database.add_message(chat_id=900000, user_id=user_id, role="user", content="Test 2")
+
+    # Создаем мок сообщения
+    mock_message = MagicMock(spec=types.Message)
+    mock_message.from_user = MagicMock(spec=types.User)
+    mock_message.from_user.id = user_id
+    mock_message.from_user.username = "me_test_user"
+    mock_message.from_user.first_name = "MeTest"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "ru"
+    mock_message.from_user.is_premium = True
+    mock_message.from_user.is_bot = False
+    mock_message.chat = MagicMock(spec=types.Chat)
+    mock_message.chat.id = 900000
+    mock_message.answer = AsyncMock()
+
+    # Act
+    await message_handler.me_command(mock_message)
+
+    # Assert
     mock_message.answer.assert_called_once()
+    call_args = mock_message.answer.call_args
+    response_text = call_args[0][0]
+
+    # Проверяем содержимое ответа
+    assert "👤" in response_text or "профиль" in response_text.lower()
+    assert str(user_id) in response_text
+    assert "MeTest" in response_text
+    assert "User" in response_text
+    assert "@me_test_user" in response_text
+    assert "ru" in response_text
+    assert "Premium" in response_text
+    assert "Да" in response_text or "✨" in response_text
+    assert "2" in response_text  # 2 сообщения
+
+
+@pytest.mark.asyncio
+async def test_me_command_user_not_in_db(message_handler):
+    """Тест команды /me когда пользователь не найден в БД (не должно происходить)."""
+    # Создаем мок сообщения с пользователем, которого нет в БД
+    mock_message = MagicMock(spec=types.Message)
+    mock_message.from_user = MagicMock(spec=types.User)
+    mock_message.from_user.id = 999999999
+    mock_message.from_user.username = "ghost_user"
+    mock_message.from_user.first_name = "Ghost"
+    mock_message.from_user.last_name = None
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
+    mock_message.chat = MagicMock(spec=types.Chat)
+    mock_message.chat.id = 888888
+    mock_message.answer = AsyncMock()
+
+    # Вызываем команду /me - пользователь будет создан автоматически при save_user_info
+    await message_handler.me_command(mock_message)
+
+    # Проверяем что ответ был отправлен
+    mock_message.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_me_command_without_user(message_handler):
+    """Тест команды /me без пользователя."""
+    mock_message = MagicMock(spec=types.Message)
+    mock_message.from_user = None
+    mock_message.chat = MagicMock(spec=types.Chat)
+    mock_message.chat.id = 123
+    mock_message.answer = AsyncMock()
+
+    # Вызываем команду - не должно быть ошибок
+    await message_handler.me_command(mock_message)
+
+    # answer не должен быть вызван
+    mock_message.answer.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_me_command_with_no_messages(message_handler, database):
+    """Тест команды /me для пользователя без сообщений."""
+    # Создаем пользователя без сообщений
+    user_id = 700000
+    await database.upsert_user(
+        user_id=user_id,
+        username="no_msg_user",
+        first_name="NoMsg",
+        last_name=None,
+        language_code="en",
+        is_premium=False,
+        is_bot=False,
+    )
+
+    mock_message = MagicMock(spec=types.Message)
+    mock_message.from_user = MagicMock(spec=types.User)
+    mock_message.from_user.id = user_id
+    mock_message.from_user.username = "no_msg_user"
+    mock_message.from_user.first_name = "NoMsg"
+    mock_message.from_user.last_name = None
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
+    mock_message.chat = MagicMock(spec=types.Chat)
+    mock_message.chat.id = 600000
+    mock_message.answer = AsyncMock()
+
+    # Вызываем команду
+    await message_handler.me_command(mock_message)
+
+    # Проверяем что ответ был отправлен
+    mock_message.answer.assert_called_once()
+    call_args = mock_message.answer.call_args
+    response_text = call_args[0][0]
+
+    # Проверяем что показывается 0 сообщений
+    assert "0" in response_text
+
+
+@pytest.mark.asyncio
+async def test_user_auto_save_on_message(message_handler, database):
+    """Тест автоматического сохранения пользователя при отправке сообщения."""
+    user_id = 600000
+
+    # Создаем мок сообщения
+    mock_message = MagicMock(spec=types.Message)
+    mock_message.from_user = MagicMock(spec=types.User)
+    mock_message.from_user.id = user_id
+    mock_message.from_user.username = "auto_save_user"
+    mock_message.from_user.first_name = "AutoSave"
+    mock_message.from_user.last_name = "Test"
+    mock_message.from_user.language_code = "de"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
+    mock_message.chat = MagicMock(spec=types.Chat)
+    mock_message.chat.id = 500000
+    mock_message.text = "Test message"
+    mock_message.answer = AsyncMock()
+    mock_bot = MagicMock()
+    mock_bot.send_chat_action = AsyncMock()
+    mock_message.bot = mock_bot
+
+    # Мокаем LLM ответ
+    with patch.object(
+        message_handler.llm_client, "get_response", return_value="Test response"
+    ):
+        await message_handler.handle_message(mock_message)
+
+    # Проверяем что пользователь сохранен в БД
+    user = await database.get_user(user_id)
+    assert user is not None
+    assert user["user_id"] == user_id
+    assert user["username"] == "auto_save_user"
+    assert user["first_name"] == "AutoSave"
+    assert user["last_name"] == "Test"
+    assert user["language_code"] == "de"
+    assert user["is_premium"] is False
+    assert user["is_bot"] is False

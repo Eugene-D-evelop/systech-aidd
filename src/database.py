@@ -131,3 +131,113 @@ class Database:
             f"Soft deleted {affected_rows} messages for chat_id={chat_id}, user_id={user_id}"
         )
 
+    async def upsert_user(
+        self,
+        user_id: int,
+        username: str | None,
+        first_name: str,
+        last_name: str | None,
+        language_code: str | None,
+        is_premium: bool,
+        is_bot: bool,
+    ) -> None:
+        """Создание или обновление информации о пользователе (UPSERT).
+
+        Args:
+            user_id: ID пользователя Telegram
+            username: @username пользователя
+            first_name: Имя пользователя
+            last_name: Фамилия пользователя
+            language_code: Код языка интерфейса
+            is_premium: Наличие Telegram Premium
+            is_bot: Является ли пользователь ботом
+        """
+        with self._get_connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                    INSERT INTO users (
+                        user_id, username, first_name, last_name,
+                        language_code, is_premium, is_bot
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (user_id) DO UPDATE SET
+                        username = EXCLUDED.username,
+                        first_name = EXCLUDED.first_name,
+                        last_name = EXCLUDED.last_name,
+                        language_code = EXCLUDED.language_code,
+                        is_premium = EXCLUDED.is_premium,
+                        is_bot = EXCLUDED.is_bot,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                (user_id, username, first_name, last_name, language_code, is_premium, is_bot),
+            )
+            conn.commit()
+
+        logger.debug(f"User upserted: user_id={user_id}, username={username}")
+
+    async def get_user(self, user_id: int) -> dict[str, Any] | None:
+        """Получение информации о пользователе.
+
+        Args:
+            user_id: ID пользователя Telegram
+
+        Returns:
+            Словарь с информацией о пользователе или None, если не найден
+        """
+        with self._get_connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                    SELECT user_id, username, first_name, last_name,
+                           language_code, is_premium, is_bot,
+                           created_at, updated_at
+                    FROM users
+                    WHERE user_id = %s
+                    """,
+                (user_id,),
+            )
+            result = cur.fetchone()
+
+        logger.debug(f"User retrieved: user_id={user_id}, found={result is not None}")
+        return result
+
+    async def get_user_stats(self, user_id: int) -> dict[str, Any]:
+        """Получение статистики использования бота пользователем.
+
+        Args:
+            user_id: ID пользователя Telegram
+
+        Returns:
+            Словарь со статистикой (количество сообщений, символов и т.д.)
+        """
+        with self._get_connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                    SELECT
+                        COUNT(*) as message_count,
+                        SUM(character_count) as total_characters,
+                        MIN(created_at) as first_message_at,
+                        MAX(created_at) as last_message_at
+                    FROM messages
+                    WHERE user_id = %s AND role = 'user' AND deleted_at IS NULL
+                    """,
+                (user_id,),
+            )
+            result = cur.fetchone()
+
+        # Преобразуем None в 0 для числовых полей
+        if result:
+            result["message_count"] = result["message_count"] or 0
+            result["total_characters"] = result["total_characters"] or 0
+
+        logger.debug(
+            f"User stats retrieved: user_id={user_id}, "
+            f"messages={result['message_count'] if result else 0}"
+        )
+        return result or {
+            "message_count": 0,
+            "total_characters": 0,
+            "first_message_at": None,
+            "last_message_at": None,
+        }
+
+

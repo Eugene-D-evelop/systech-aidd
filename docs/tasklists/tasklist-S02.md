@@ -206,3 +206,4 @@ await conversation.clear_history(chat_id, user_id)
 **Версия:** 0.2.0  
 **Статус:** ✅ Production Ready
 
+

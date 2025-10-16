@@ -18,3 +18,4 @@ CREATE INDEX IF NOT EXISTS idx_chat_user ON messages (chat_id, user_id);
 -- Индекс для фильтрации по deleted_at
 CREATE INDEX IF NOT EXISTS idx_deleted ON messages (deleted_at);
 
+

@@ -43,6 +43,7 @@ class TelegramBot:
         self.dp.message.register(message_handler.start_command, Command("start"))
         self.dp.message.register(message_handler.role_command, Command("role"))
         self.dp.message.register(message_handler.reset_command, Command("reset"))
+        self.dp.message.register(message_handler.me_command, Command("me"))
 
         # Регистрация обработчика текстовых сообщений (должен быть последним)
         self.dp.message.register(message_handler.handle_message)

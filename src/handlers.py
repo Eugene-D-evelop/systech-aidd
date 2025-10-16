@@ -7,25 +7,49 @@ from openai import APIError, APITimeoutError
 
 from .config import Config
 from .conversation import Conversation
+from .database import Database
 from .llm_client import LLMClient, LLMError
 
 logger = logging.getLogger(__name__)
 
 
+async def save_user_info(database: Database, user: types.User) -> None:
+    """Сохранение/обновление информации о пользователе в БД.
+
+    Args:
+        database: Экземпляр Database для работы с БД
+        user: Объект пользователя из Telegram
+    """
+    await database.upsert_user(
+        user_id=user.id,
+        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        language_code=user.language_code,
+        is_premium=user.is_premium or False,
+        is_bot=user.is_bot,
+    )
+    logger.debug(f"User info saved: user_id={user.id}, username={user.username}")
+
+
 class MessageHandler:
     """Класс для обработки сообщений и команд бота."""
 
-    def __init__(self, config: Config, llm_client: LLMClient, conversation: Conversation):
+    def __init__(
+        self, config: Config, llm_client: LLMClient, conversation: Conversation, database: Database
+    ):
         """Инициализация обработчика.
 
         Args:
             config: Конфигурация приложения
             llm_client: Клиент для работы с LLM
             conversation: Хранилище истории диалогов
+            database: Слой работы с базой данных
         """
         self.config = config
         self.llm_client = llm_client
         self.conversation = conversation
+        self.database = database
         logger.info("MessageHandler initialized")
 
     async def start_command(self, message: types.Message) -> None:
@@ -34,17 +58,28 @@ class MessageHandler:
         Args:
             message: Сообщение от пользователя
         """
-        user_id = message.from_user.id if message.from_user else "unknown"
+        if not message.from_user:
+            return
+
+        # Сохраняем информацию о пользователе
+        await save_user_info(self.database, message.from_user)
+
+        user_id = message.from_user.id
         chat_id = message.chat.id
-        logger.info(f"Command /start from user {user_id} in chat {chat_id}")
+        first_name = message.from_user.first_name
+        logger.info(
+            f"Command /start from user {user_id} (@{message.from_user.username or 'no_username'}) "
+            f"in chat {chat_id}"
+        )
 
         welcome_text = (
-            "👋 <b>Привет! Я Python Code Reviewer.</b>\n\n"
+            f"👋 <b>Привет, {first_name}! Я Python Code Reviewer.</b>\n\n"
             "Я помогу проверить твой Python код на соответствие PEP 8,\n"
             "найду потенциальные баги и предложу улучшения.\n\n"
             "💡 <b>Команды:</b>\n"
             "• /role - подробнее о моей роли и возможностях\n"
-            "• /reset - начать новый диалог\n\n"
+            "• /reset - начать новый диалог\n"
+            "• /me - посмотреть свой профиль\n\n"
             "Присылай код - начнем ревью! 🚀"
         )
 
@@ -59,6 +94,9 @@ class MessageHandler:
         """
         if not message.from_user:
             return
+
+        # Сохраняем информацию о пользователе
+        await save_user_info(self.database, message.from_user)
 
         user_id = message.from_user.id
         chat_id = message.chat.id
@@ -78,7 +116,13 @@ class MessageHandler:
         Args:
             message: Сообщение от пользователя
         """
-        user_id = message.from_user.id if message.from_user else "unknown"
+        if not message.from_user:
+            return
+
+        # Сохраняем информацию о пользователе
+        await save_user_info(self.database, message.from_user)
+
+        user_id = message.from_user.id
         chat_id = message.chat.id
         logger.info(f"Command /role from user {user_id} in chat {chat_id}")
 
@@ -103,6 +147,67 @@ class MessageHandler:
         await message.answer(role_text)
         logger.info(f"Role description sent to user {user_id}")
 
+    async def me_command(self, message: types.Message) -> None:
+        """Обработчик команды /me - отображение профиля пользователя.
+
+        Args:
+            message: Сообщение от пользователя
+        """
+        if not message.from_user:
+            return
+
+        # Сохраняем информацию о пользователе
+        await save_user_info(self.database, message.from_user)
+
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        logger.info(f"Command /me from user {user_id} in chat {chat_id}")
+
+        # Получаем информацию о пользователе из БД
+        user = await self.database.get_user(user_id)
+        if not user:
+            error_text = "❌ Не удалось найти информацию о пользователе."
+            await message.answer(error_text)
+            logger.error(f"User {user_id} not found in database")
+            return
+
+        # Получаем статистику
+        stats = await self.database.get_user_stats(user_id)
+
+        # Формируем полное имя
+        full_name = user["first_name"]
+        if user["last_name"]:
+            full_name += f" {user['last_name']}"
+
+        # Форматируем дату регистрации
+        created_date = user["created_at"].strftime("%d.%m.%Y")
+
+        # Формируем username строку
+        username_str = (
+            f"@{user['username']}" if user["username"] else "<i>не указан</i>"
+        )
+
+        profile_text = (
+            f"👤 <b>Ваш профиль</b>\n\n"
+            f"🆔 ID: <code>{user['user_id']}</code>\n"
+            f"👤 Имя: {full_name}\n"
+            f"📱 Username: {username_str}\n"
+            f"🌍 Язык: {user['language_code'] or '<i>не указан</i>'}\n"
+            f"⭐ Premium: {'Да ✨' if user['is_premium'] else 'Нет'}\n"
+            f"📅 С нами с: {created_date}\n\n"
+            f"📊 <b>Статистика:</b>\n"
+            f"💬 Сообщений отправлено: {stats['message_count']}\n"
+            f"📝 Всего символов: {stats['total_characters']:,}\n"
+        )
+
+        # Добавляем информацию о первом сообщении, если есть
+        if stats["first_message_at"]:
+            first_msg_date = stats["first_message_at"].strftime("%d.%m.%Y")
+            profile_text += f"🗓️ Первое сообщение: {first_msg_date}\n"
+
+        await message.answer(profile_text)
+        logger.info(f"Profile sent to user {user_id}")
+
     async def handle_message(self, message: types.Message) -> None:
         """Обработчик текстовых сообщений.
 
@@ -112,11 +217,17 @@ class MessageHandler:
         if not message.from_user or not message.text:
             return
 
+        # Сохраняем информацию о пользователе
+        await save_user_info(self.database, message.from_user)
+
         user_id = message.from_user.id
         chat_id = message.chat.id
         user_message = message.text
 
-        logger.info(f"Message from user {user_id} in chat {chat_id}, length: {len(user_message)}")
+        logger.info(
+            f"Message from user {user_id} (@{message.from_user.username or 'no_username'}) "
+            f"in chat {chat_id}, length: {len(user_message)}"
+        )
 
         # Сохраняем сообщение пользователя в историю
         await self.conversation.add_message(chat_id, user_id, "user", user_message)
