@@ -24,9 +24,9 @@ def config():
 
 
 @pytest.fixture
-def conversation():
-    """Фикстура для создания Conversation."""
-    return Conversation()
+def conversation(database):
+    """Фикстура для создания Conversation с БД."""
+    return Conversation(database)
 
 
 @pytest.fixture
@@ -83,17 +83,17 @@ async def test_reset_command(message_handler, conversation):
     mock_message.answer = AsyncMock()
 
     # Добавляем сообщения в историю
-    conversation.add_message(123, 456, "user", "Test message 1")
-    conversation.add_message(123, 456, "assistant", "Response 1")
+    await conversation.add_message(123, 456, "user", "Test message 1")
+    await conversation.add_message(123, 456, "assistant", "Response 1")
 
     # Проверяем что история есть
-    assert len(conversation.get_history(123, 456)) == 2
+    assert len(await conversation.get_history(123, 456)) == 2
 
     # Вызываем reset
     await message_handler.reset_command(mock_message)
 
     # Проверяем что история очищена
-    assert len(conversation.get_history(123, 456)) == 0
+    assert len(await conversation.get_history(123, 456)) == 0
 
     # Проверяем что был отправлен ответ
     mock_message.answer.assert_called_once()
@@ -139,7 +139,7 @@ async def test_handle_message_real_llm(message_handler, conversation):
     assert len(response_text) > 0
 
     # Проверяем что история сохранена (2 сообщения: user + assistant)
-    history = conversation.get_history(456, 789)
+    history = await conversation.get_history(456, 789)
     assert len(history) == 2
     assert history[0]["role"] == "user"
     assert history[0]["content"] == "Say 'test passed' and nothing else"
@@ -164,8 +164,8 @@ async def test_handle_message_conversation_context(message_handler, conversation
     mock_message.bot = mock_bot
 
     # Добавляем предыдущий контекст
-    conversation.add_message(222, 111, "user", "My name is Bob")
-    conversation.add_message(222, 111, "assistant", "Nice to meet you, Bob!")
+    await conversation.add_message(222, 111, "user", "My name is Bob")
+    await conversation.add_message(222, 111, "assistant", "Nice to meet you, Bob!")
 
     # Вызываем обработчик
     await message_handler.handle_message(mock_message)
@@ -174,7 +174,7 @@ async def test_handle_message_conversation_context(message_handler, conversation
     mock_message.answer.assert_called_once()
 
     # Проверяем что теперь в истории 4 сообщения
-    history = conversation.get_history(222, 111)
+    history = await conversation.get_history(222, 111)
     assert len(history) == 4
 
 
@@ -369,7 +369,7 @@ async def test_handle_message_success(message_handler, conversation):
     mock_message.answer.assert_called_once_with("Hello! How can I help you?")
 
     # Проверяем что сообщения сохранены в историю
-    history = conversation.get_history(456, 123)
+    history = await conversation.get_history(456, 123)
     assert len(history) == 2
     assert history[0]["role"] == "user"
     assert history[0]["content"] == "Hello"

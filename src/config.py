@@ -18,4 +18,8 @@ class Config(BaseSettings):
     max_tokens: int = 1000
     timeout: int = 60
 
+    # База данных
+    database_url: str = "postgresql://postgres:postgres@localhost:5433/systech_aidd"
+    database_timeout: int = 10
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

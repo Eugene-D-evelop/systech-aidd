@@ -1,34 +1,27 @@
 """Управление контекстом и историей диалогов."""
 
 import logging
-import time
-from collections import defaultdict
-from typing import Any
+
+from .database import Database
 
 logger = logging.getLogger(__name__)
 
 
 class Conversation:
-    """Класс для управления историей диалогов пользователей."""
+    """Класс для управления историей диалогов пользователей через базу данных."""
 
-    def __init__(self) -> None:
-        """Инициализация хранилища диалогов."""
-        self.conversations: dict[str, list[dict[str, Any]]] = defaultdict(list)
-        logger.info("Conversation storage initialized")
-
-    def _get_user_key(self, chat_id: int, user_id: int) -> str:
-        """Формирование ключа для пользователя.
+    def __init__(self, database: Database) -> None:
+        """Инициализация с подключением к базе данных.
 
         Args:
-            chat_id: ID чата
-            user_id: ID пользователя
-
-        Returns:
-            Строковый ключ формата "chat_id:user_id"
+            database: Экземпляр Database для работы с БД
         """
-        return f"{chat_id}:{user_id}"
+        self.db = database
+        logger.info("Conversation manager initialized with database backend")
 
-    def add_message(self, chat_id: int, user_id: int, role: str, content: str) -> None:
+    async def add_message(
+        self, chat_id: int, user_id: int, role: str, content: str
+    ) -> None:
         """Добавление сообщения в историю диалога.
 
         Args:
@@ -37,18 +30,10 @@ class Conversation:
             role: Роль отправителя (user, assistant, system)
             content: Текст сообщения
         """
-        user_key = self._get_user_key(chat_id, user_id)
+        await self.db.add_message(chat_id, user_id, role, content)
+        logger.debug(f"Message added for chat_id={chat_id}, user_id={user_id}, role={role}")
 
-        message = {
-            "role": role,
-            "content": content,
-            "timestamp": time.time(),
-        }
-
-        self.conversations[user_key].append(message)
-        logger.debug(f"Message added for {user_key}, role: {role}")
-
-    def get_history(
+    async def get_history(
         self, chat_id: int, user_id: int, limit: int | None = None
     ) -> list[dict[str, str]]:
         """Получение истории диалога пользователя.
@@ -59,52 +44,18 @@ class Conversation:
             limit: Максимальное количество последних сообщений (None = все)
 
         Returns:
-            Список сообщений в формате OpenAI API (без timestamp)
+            Список сообщений в формате OpenAI API (только role и content)
         """
-        user_key = self._get_user_key(chat_id, user_id)
+        history = await self.db.get_history(chat_id, user_id, limit)
+        logger.debug(f"Retrieved {len(history)} messages for chat_id={chat_id}, user_id={user_id}")
+        return history
 
-        if user_key not in self.conversations:
-            logger.debug(f"No history found for {user_key}")
-            return []
-
-        messages = self.conversations[user_key]
-
-        # Применяем лимит, если указан
-        if limit is not None and limit > 0:
-            messages = messages[-limit:]
-
-        # Возвращаем только role и content (без timestamp)
-        result = [{"role": msg["role"], "content": msg["content"]} for msg in messages]
-
-        logger.debug(f"Retrieved {len(result)} messages for {user_key}")
-        return result
-
-    def clear_history(self, chat_id: int, user_id: int) -> None:
-        """Очистка истории диалога пользователя.
+    async def clear_history(self, chat_id: int, user_id: int) -> None:
+        """Очистка истории диалога пользователя (soft delete).
 
         Args:
             chat_id: ID чата
             user_id: ID пользователя
         """
-        user_key = self._get_user_key(chat_id, user_id)
-
-        if user_key in self.conversations:
-            message_count = len(self.conversations[user_key])
-            self.conversations[user_key] = []
-            logger.info(f"Cleared {message_count} messages for {user_key}")
-        else:
-            logger.debug(f"No history to clear for {user_key}")
-
-    def get_stats(self) -> dict[str, int]:
-        """Получение статистики по диалогам.
-
-        Returns:
-            Словарь со статистикой (количество пользователей, сообщений)
-        """
-        total_users = len(self.conversations)
-        total_messages = sum(len(msgs) for msgs in self.conversations.values())
-
-        return {
-            "total_users": total_users,
-            "total_messages": total_messages,
-        }
+        await self.db.clear_history(chat_id, user_id)
+        logger.info(f"History cleared for chat_id={chat_id}, user_id={user_id}")

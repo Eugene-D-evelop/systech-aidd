@@ -65,7 +65,7 @@ class MessageHandler:
         logger.info(f"Command /reset from user {user_id} in chat {chat_id}")
 
         # Очищаем историю диалога
-        self.conversation.clear_history(chat_id, user_id)
+        await self.conversation.clear_history(chat_id, user_id)
 
         reset_text = "🔄 <b>История диалога очищена!</b>\n\nМожете начать новый разговор."
 
@@ -119,10 +119,10 @@ class MessageHandler:
         logger.info(f"Message from user {user_id} in chat {chat_id}, length: {len(user_message)}")
 
         # Сохраняем сообщение пользователя в историю
-        self.conversation.add_message(chat_id, user_id, "user", user_message)
+        await self.conversation.add_message(chat_id, user_id, "user", user_message)
 
         # Получаем историю диалога с учетом лимита
-        history = self.conversation.get_history(
+        history = await self.conversation.get_history(
             chat_id, user_id, limit=self.config.max_history_length
         )
 
@@ -137,7 +137,7 @@ class MessageHandler:
             )
 
             # Сохраняем ответ ассистента в историю
-            self.conversation.add_message(chat_id, user_id, "assistant", llm_response)
+            await self.conversation.add_message(chat_id, user_id, "assistant", llm_response)
 
             # Отправляем ответ пользователю
             await message.answer(llm_response)

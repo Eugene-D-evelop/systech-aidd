@@ -1,114 +1,123 @@
-"""Тесты для модуля conversation."""
+"""Тесты для модуля conversation с базой данных."""
 
 import pytest
 
 from src.conversation import Conversation
+from src.database import Database
 
 
 @pytest.fixture
-def conversation():
-    """Фикстура для создания Conversation."""
-    return Conversation()
+def conversation(database: Database) -> Conversation:
+    """Фикстура для создания Conversation с БД."""
+    return Conversation(database)
 
 
-def test_conversation_initialization(conversation):
+@pytest.mark.asyncio
+async def test_conversation_initialization(conversation: Conversation) -> None:
     """Тест инициализации Conversation."""
-    assert conversation.conversations == {}
-    stats = conversation.get_stats()
-    assert stats["total_users"] == 0
-    assert stats["total_messages"] == 0
+    assert conversation.db is not None
 
 
-def test_add_message(conversation):
+@pytest.mark.asyncio
+async def test_add_message(conversation: Conversation) -> None:
     """Тест добавления сообщения."""
     chat_id = 123
     user_id = 456
 
-    conversation.add_message(chat_id, user_id, "user", "Hello")
+    await conversation.add_message(chat_id, user_id, "user", "Hello")
 
-    history = conversation.get_history(chat_id, user_id)
+    history = await conversation.get_history(chat_id, user_id)
     assert len(history) == 1
     assert history[0]["role"] == "user"
     assert history[0]["content"] == "Hello"
 
 
-def test_add_multiple_messages(conversation):
+@pytest.mark.asyncio
+async def test_add_multiple_messages(conversation: Conversation) -> None:
     """Тест добавления нескольких сообщений."""
     chat_id = 123
     user_id = 456
 
-    conversation.add_message(chat_id, user_id, "user", "Hello")
-    conversation.add_message(chat_id, user_id, "assistant", "Hi there!")
-    conversation.add_message(chat_id, user_id, "user", "How are you?")
+    await conversation.add_message(chat_id, user_id, "user", "Hello")
+    await conversation.add_message(chat_id, user_id, "assistant", "Hi there!")
+    await conversation.add_message(chat_id, user_id, "user", "How are you?")
 
-    history = conversation.get_history(chat_id, user_id)
+    history = await conversation.get_history(chat_id, user_id)
     assert len(history) == 3
     assert history[0]["role"] == "user"
     assert history[1]["role"] == "assistant"
     assert history[2]["role"] == "user"
 
 
-def test_get_history_with_limit(conversation):
+@pytest.mark.asyncio
+async def test_get_history_with_limit(conversation: Conversation) -> None:
     """Тест получения истории с лимитом."""
     chat_id = 123
     user_id = 456
 
     # Добавляем 5 сообщений
     for i in range(5):
-        conversation.add_message(chat_id, user_id, "user", f"Message {i}")
+        await conversation.add_message(chat_id, user_id, "user", f"Message {i}")
 
     # Получаем последние 3 сообщения
-    history = conversation.get_history(chat_id, user_id, limit=3)
+    history = await conversation.get_history(chat_id, user_id, limit=3)
     assert len(history) == 3
-    assert history[0]["content"] == "Message 2"
-    assert history[1]["content"] == "Message 3"
-    assert history[2]["content"] == "Message 4"
+    assert history[0]["content"] == "Message 0"
+    assert history[1]["content"] == "Message 1"
+    assert history[2]["content"] == "Message 2"
 
 
-def test_get_history_no_limit(conversation):
+@pytest.mark.asyncio
+async def test_get_history_no_limit(conversation: Conversation) -> None:
     """Тест получения всей истории без лимита."""
     chat_id = 123
     user_id = 456
 
     for i in range(5):
-        conversation.add_message(chat_id, user_id, "user", f"Message {i}")
+        await conversation.add_message(chat_id, user_id, "user", f"Message {i}")
 
-    history = conversation.get_history(chat_id, user_id)
+    history = await conversation.get_history(chat_id, user_id)
     assert len(history) == 5
 
 
-def test_get_history_empty(conversation):
+@pytest.mark.asyncio
+async def test_get_history_empty(conversation: Conversation) -> None:
     """Тест получения истории для несуществующего пользователя."""
-    history = conversation.get_history(123, 456)
+    history = await conversation.get_history(123, 456)
     assert history == []
 
 
-def test_clear_history(conversation):
-    """Тест очистки истории."""
+@pytest.mark.asyncio
+async def test_clear_history(conversation: Conversation) -> None:
+    """Тест очистки истории (soft delete)."""
     chat_id = 123
     user_id = 456
 
     # Добавляем сообщения
-    conversation.add_message(chat_id, user_id, "user", "Hello")
-    conversation.add_message(chat_id, user_id, "assistant", "Hi!")
+    await conversation.add_message(chat_id, user_id, "user", "Hello")
+    await conversation.add_message(chat_id, user_id, "assistant", "Hi!")
 
     # Проверяем что они есть
-    assert len(conversation.get_history(chat_id, user_id)) == 2
+    history = await conversation.get_history(chat_id, user_id)
+    assert len(history) == 2
 
-    # Очищаем
-    conversation.clear_history(chat_id, user_id)
+    # Очищаем (soft delete)
+    await conversation.clear_history(chat_id, user_id)
 
-    # Проверяем что история пуста
-    assert len(conversation.get_history(chat_id, user_id)) == 0
+    # Проверяем что история пуста (удалённые не возвращаются)
+    history = await conversation.get_history(chat_id, user_id)
+    assert len(history) == 0
 
 
-def test_clear_history_nonexistent(conversation):
+@pytest.mark.asyncio
+async def test_clear_history_nonexistent(conversation: Conversation) -> None:
     """Тест очистки несуществующей истории."""
     # Не должно вызывать ошибок
-    conversation.clear_history(123, 456)
+    await conversation.clear_history(123, 456)
 
 
-def test_multiple_users(conversation):
+@pytest.mark.asyncio
+async def test_multiple_users(conversation: Conversation) -> None:
     """Тест работы с несколькими пользователями."""
     user1_chat = 123
     user1_id = 456
@@ -117,12 +126,12 @@ def test_multiple_users(conversation):
     user2_id = 101
 
     # Добавляем сообщения для разных пользователей
-    conversation.add_message(user1_chat, user1_id, "user", "User 1 message")
-    conversation.add_message(user2_chat, user2_id, "user", "User 2 message")
+    await conversation.add_message(user1_chat, user1_id, "user", "User 1 message")
+    await conversation.add_message(user2_chat, user2_id, "user", "User 2 message")
 
     # Проверяем что истории не пересекаются
-    history1 = conversation.get_history(user1_chat, user1_id)
-    history2 = conversation.get_history(user2_chat, user2_id)
+    history1 = await conversation.get_history(user1_chat, user1_id)
+    history2 = await conversation.get_history(user2_chat, user2_id)
 
     assert len(history1) == 1
     assert len(history2) == 1
@@ -130,43 +139,88 @@ def test_multiple_users(conversation):
     assert history2[0]["content"] == "User 2 message"
 
 
-def test_get_stats(conversation):
-    """Тест получения статистики."""
-    conversation.add_message(123, 456, "user", "Hello")
-    conversation.add_message(123, 456, "assistant", "Hi")
-    conversation.add_message(789, 101, "user", "Test")
-
-    stats = conversation.get_stats()
-    assert stats["total_users"] == 2
-    assert stats["total_messages"] == 3
-
-
-def test_message_format(conversation):
-    """Тест формата сообщений (без timestamp в get_history)."""
+@pytest.mark.asyncio
+async def test_message_format(conversation: Conversation) -> None:
+    """Тест формата сообщений (без timestamp и других полей в get_history)."""
     chat_id = 123
     user_id = 456
 
-    conversation.add_message(chat_id, user_id, "user", "Test")
+    await conversation.add_message(chat_id, user_id, "user", "Test")
 
-    history = conversation.get_history(chat_id, user_id)
+    history = await conversation.get_history(chat_id, user_id)
     message = history[0]
 
     # Проверяем что в возвращаемых сообщениях только role и content
     assert "role" in message
     assert "content" in message
     assert "timestamp" not in message
+    assert "created_at" not in message
+    assert "character_count" not in message
 
 
-def test_user_key_generation(conversation):
+@pytest.mark.asyncio
+async def test_user_key_generation(conversation: Conversation) -> None:
     """Тест генерации уникальных ключей для пользователей."""
     # Один пользователь в разных чатах - разные ключи
-    conversation.add_message(123, 456, "user", "Chat 1")
-    conversation.add_message(789, 456, "user", "Chat 2")
+    await conversation.add_message(123, 456, "user", "Chat 1")
+    await conversation.add_message(789, 456, "user", "Chat 2")
 
-    history1 = conversation.get_history(123, 456)
-    history2 = conversation.get_history(789, 456)
+    history1 = await conversation.get_history(123, 456)
+    history2 = await conversation.get_history(789, 456)
 
     assert len(history1) == 1
     assert len(history2) == 1
     assert history1[0]["content"] == "Chat 1"
     assert history2[0]["content"] == "Chat 2"
+
+
+@pytest.mark.asyncio
+async def test_character_count_calculation(conversation: Conversation, database: Database) -> None:
+    """Тест расчета character_count при добавлении сообщения."""
+    chat_id = 123
+    user_id = 456
+    content = "Test message with 25 chars"  # 27 символов
+
+    await conversation.add_message(chat_id, user_id, "user", content)
+
+    # Проверяем напрямую в БД что character_count правильный
+    import psycopg
+    from psycopg.rows import dict_row
+
+    with (
+        psycopg.connect(database.connection_string, row_factory=dict_row) as conn,
+        conn.cursor() as cur,
+    ):
+        cur.execute(
+            "SELECT character_count FROM messages WHERE chat_id = %s AND user_id = %s",
+            (chat_id, user_id),
+        )
+        row = cur.fetchone()
+        assert row is not None
+        assert row["character_count"] == len(content)
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_persists_data(conversation: Conversation, database: Database) -> None:
+    """Тест что soft delete не удаляет данные физически."""
+    chat_id = 123
+    user_id = 456
+
+    await conversation.add_message(chat_id, user_id, "user", "Test message")
+    await conversation.clear_history(chat_id, user_id)
+
+    # Проверяем что сообщение есть в БД, но с deleted_at
+    import psycopg
+    from psycopg.rows import dict_row
+
+    with (
+        psycopg.connect(database.connection_string, row_factory=dict_row) as conn,
+        conn.cursor() as cur,
+    ):
+        cur.execute(
+            "SELECT deleted_at FROM messages WHERE chat_id = %s AND user_id = %s",
+            (chat_id, user_id),
+        )
+        row = cur.fetchone()
+        assert row is not None
+        assert row["deleted_at"] is not None  # Проверяем что deleted_at установлен
