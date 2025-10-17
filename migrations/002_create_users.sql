@@ -46,11 +46,20 @@ ON CONFLICT (user_id) DO NOTHING;
 
 -- Добавление foreign key от messages.user_id к users.user_id
 -- Используем ON DELETE CASCADE для автоматического удаления сообщений при удалении пользователя
-ALTER TABLE messages 
-ADD CONSTRAINT fk_messages_user_id 
-FOREIGN KEY (user_id) 
-REFERENCES users(user_id) 
-ON DELETE CASCADE;
+-- Проверяем, что constraint еще не существует
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'fk_messages_user_id'
+    ) THEN
+        ALTER TABLE messages 
+        ADD CONSTRAINT fk_messages_user_id 
+        FOREIGN KEY (user_id) 
+        REFERENCES users(user_id) 
+        ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- Индекс для foreign key (если не был создан автоматически)
 CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages (user_id);
