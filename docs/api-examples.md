@@ -1,8 +1,8 @@
-# 📡 API Examples: systech-aidd Statistics API
+# 📡 API Examples: systech-aidd API
 
 > **Базовый URL:** http://localhost:8000  
-> **Версия:** 0.1.0  
-> **Статус:** Mock реализация (Sprint F01)
+> **Версия:** 0.2.0  
+> **Статус:** Real API (Sprint F04) - PostgreSQL integration
 
 ---
 
@@ -334,15 +334,79 @@ Frontend может быть запущен на любом порту (напр
 
 ---
 
+## 💬 Chat Endpoints (Sprint F04)
+
+### 4. Отправка сообщения в чат
+
+**Endpoint:** `POST /api/chat/message`
+
+**Request Body:**
+```json
+{
+  "message": "Сколько у нас пользователей?",
+  "session_id": "550e8400-e29b-41d4-a716-446655440000",
+  "mode": "admin"
+}
+```
+
+**Примеры запросов:**
+
+```bash
+# Normal режим (обычный AI-ассистент)
+curl -X POST http://localhost:8000/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Как настроить бота?", "session_id": "test-123", "mode": "normal"}'
+
+# Admin режим (Text2Postgre)
+curl -X POST http://localhost:8000/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Сколько пользователей с Premium?", "session_id": "test-123", "mode": "admin"}'
+```
+
+**Response:**
+```json
+{
+  "response": "У вас 42 пользователя в системе.",
+  "session_id": "test-123",
+  "sql_query": "SELECT COUNT(*) FROM users WHERE is_bot = FALSE"
+}
+```
+
+---
+
+### 5. Получение истории чата
+
+**Endpoint:** `GET /api/chat/history/{session_id}`
+
+**Пример:**
+```bash
+curl http://localhost:8000/api/chat/history/test-123
+```
+
+---
+
+### 6. Очистка истории
+
+**Endpoint:** `DELETE /api/chat/history/{session_id}`
+
+**Пример:**
+```bash
+curl -X DELETE http://localhost:8000/api/chat/history/test-123
+```
+
+---
+
 ## 📖 Связанные документы
 
 - [Tasklist F01](tasklists/tasklist-F01.md) - Детальная информация о Sprint F01
+- [Sprint F04 Summary](tasklists/sprint-F04-summary.md) - AI Chat с Text2Postgre
 - [Frontend Roadmap](frontend-roadmap.md) - План разработки frontend
 - [План Sprint F01](../.cursor/plans/sprint-f01-mock-api-cacd9ae9.plan.md) - Детальный план реализации
 
 ---
 
 **Дата создания:** 2025-10-17  
-**Версия:** 1.0  
-**Статус:** ✅ Готов к использованию
+**Последнее обновление:** 2025-10-17 (Sprint F04)  
+**Версия:** 2.0  
+**Статус:** ✅ Ready for production (Real API + AI Chat)
 

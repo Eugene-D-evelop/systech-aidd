@@ -1,3 +1,4 @@
+import { FloatingChatButton } from '@/components/chat/floating-chat-button'
 import { DashboardClient } from '@/components/dashboard/dashboard-client'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,22 +37,27 @@ export default async function DashboardPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">Dashboard</h1>
-                    <p className="text-muted-foreground">
-                        Статистика AI-бота для Telegram
-                    </p>
+        <>
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold">Dashboard</h1>
+                        <p className="text-muted-foreground">
+                            Статистика AI-бота для Telegram
+                        </p>
+                    </div>
+                    {stats?.metadata.is_mock && (
+                        <Badge variant="secondary">Mock Data</Badge>
+                    )}
                 </div>
-                {stats?.metadata.is_mock && (
-                    <Badge variant="secondary">Mock Data</Badge>
-                )}
+
+                {/* Client component handles all interactivity */}
+                <DashboardClient stats={stats!} />
             </div>
 
-            {/* Client component handles all interactivity */}
-            <DashboardClient stats={stats!} />
-        </div>
+            {/* Floating chat button */}
+            <FloatingChatButton />
+        </>
     )
 }
 

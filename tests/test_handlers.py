@@ -24,6 +24,12 @@ def config():
 
 
 @pytest.fixture
+def real_config():
+    """Фикстура для создания реальной конфигурации из .env для интеграционных тестов."""
+    return Config()
+
+
+@pytest.fixture
 def conversation(database):
     """Фикстура для создания Conversation с БД."""
     return Conversation(database)
@@ -122,8 +128,12 @@ async def test_reset_command(message_handler, conversation, database):
 @pytest.mark.asyncio
 @pytest.mark.slow
 @pytest.mark.integration
-async def test_handle_message_real_llm(message_handler, conversation):
+async def test_handle_message_real_llm(real_config, conversation, database):
     """Интеграционный тест обработки сообщения с реальным LLM."""
+    # Создаем реальные зависимости с конфигурацией из .env
+    llm_client = LLMClient(real_config)
+    message_handler = MessageHandler(real_config, llm_client, conversation, database)
+
     # Создаем мок объект сообщения
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
@@ -172,8 +182,12 @@ async def test_handle_message_real_llm(message_handler, conversation):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_handle_message_conversation_context(message_handler, conversation, database):
+async def test_handle_message_conversation_context(real_config, conversation, database):
     """Тест что handle_message использует контекст диалога."""
+    # Создаем реальные зависимости с конфигурацией из .env
+    llm_client = LLMClient(real_config)
+    message_handler = MessageHandler(real_config, llm_client, conversation, database)
+
     # Создаем мок сообщения
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)

@@ -23,7 +23,8 @@
 
 - Node.js 18+
 - pnpm 8+
-- Mock API running on `localhost:8000` (see [Backend README](../README.md))
+- Real API running on `localhost:8000` (see [Backend README](../README.md))
+- PostgreSQL database (via Docker)
 
 ### Installation
 
@@ -71,6 +72,42 @@ Open [http://localhost:3000](http://localhost:3000) to see the dashboard.
 - Trend indicators (↑/↓ arrows with color coding)
 - Smooth animations and transitions
 - Accessible components (WCAG AA)
+- **Real API** - данные из PostgreSQL
+
+### AI Chat (Sprint F04) 🆕
+
+**Floating Chat Button:**
+- Positioned in bottom-right corner
+- Opens chat interface on click
+- Always accessible from dashboard
+
+**Chat Interface:**
+- Modern chat UI with message bubbles
+- User messages (right, blue) vs Assistant (left, gray)
+- Auto-scroll to latest message
+- Loading indicator during AI response
+
+**Two Modes:**
+
+1. **💬 Normal Mode:**
+   - General AI assistant for bot administration
+   - Helpful responses about bot management
+   - Conversation history persisted in database
+
+2. **🔧 Admin Mode (Text2Postgre):**
+   - Natural language questions about bot statistics
+   - AI generates PostgreSQL queries
+   - Executes queries against database
+   - Returns human-readable results
+   - Shows SQL query in badge (for debugging)
+
+**Features:**
+- Session management (UUID in localStorage)
+- Chat history stored in PostgreSQL
+- Real-time responses via REST API
+- Responsive design (fullscreen on mobile)
+- Mode toggle (Normal ↔ Admin)
+- Error handling with user-friendly messages
 
 ---
 
@@ -121,21 +158,32 @@ frontend/
 │   │   │   ├── chart.tsx
 │   │   │   ├── input.tsx
 │   │   │   ├── label.tsx
-│   │   │   └── tabs.tsx
+│   │   │   ├── tabs.tsx
+│   │   │   ├── textarea.tsx         # 🆕 Sprint F04
+│   │   │   └── scroll-area.tsx      # 🆕 Sprint F04
 │   │   ├── dashboard/    # Dashboard-specific components
 │   │   │   ├── dashboard-client.tsx      # Client wrapper
 │   │   │   ├── stats-card.tsx            # Metric cards
 │   │   │   ├── period-filter.tsx         # Period tabs
 │   │   │   ├── activity-chart.tsx        # Area chart
 │   │   │   └── user-distribution-chart.tsx  # Bar + Pie charts
+│   │   ├── chat/         # 🆕 Chat components (Sprint F04)
+│   │   │   ├── floating-chat-button.tsx  # Floating button
+│   │   │   ├── chat-interface.tsx        # Main chat container
+│   │   │   ├── chat-input.tsx            # Message input
+│   │   │   ├── chat-message.tsx          # Message display
+│   │   │   └── mode-toggle.tsx           # Normal/Admin toggle
 │   │   └── layout/       # Layout components
 │   │       └── header.tsx
 │   ├── lib/              # Utilities
-│   │   ├── api.ts               # API client
+│   │   ├── api.ts               # Dashboard API client
+│   │   ├── chat-api.ts          # 🆕 Chat API client (F04)
+│   │   ├── chat-storage.ts      # 🆕 localStorage utils (F04)
 │   │   ├── utils.ts             # Tailwind cn helper
 │   │   └── mock-time-series.ts  # Mock data generation
 │   └── types/            # TypeScript types
-│       └── stats.ts             # API response types
+│       ├── stats.ts             # Dashboard API types
+│       └── chat.ts              # 🆕 Chat types (F04)
 ├── .env.local            # Environment variables (gitignored)
 ├── .env.example          # Example env file
 ├── components.json       # shadcn/ui config
@@ -209,12 +257,14 @@ make frontend-type-check
 
 ### Sprint Documentation
 
-- **[Sprint F01: Mock API](../docs/tasklists/tasklist-F01.md)** - Mock API implementation
+- **[Sprint F01: Mock API](../docs/tasklists/tasklist-F01.md)** - Mock API implementation ✅
   - [Summary](../docs/tasklists/sprint-F01-summary.md)
-- **[Sprint F02: Frontend Init](../docs/tasklists/tasklist-F02.md)** - Project structure setup
-- **[Sprint F03: Dashboard](../docs/tasklists/tasklist-F03.md)** - Dashboard implementation
+- **[Sprint F02: Frontend Init](../docs/tasklists/tasklist-F02.md)** - Project structure setup ✅
+- **[Sprint F03: Dashboard](../docs/tasklists/tasklist-F03.md)** - Dashboard implementation ✅
   - [Plan](./doc/plans/s3-dashboard-plan.md) - Detailed sprint plan
   - [Summary](../docs/tasklists/sprint-F03-summary.md) - Sprint summary
+- **[Sprint F04: AI Chat](../.cursor/plans/sprint-f04-dashboard.md)** - AI Chat with Text2Postgre ✅
+  - [Summary](../docs/tasklists/sprint-F04-summary.md) - Sprint summary
 - **[Frontend Roadmap](../docs/frontend-roadmap.md)** - Full development roadmap
 
 ---
@@ -330,39 +380,45 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 - [x] Sprint F01: Mock API for dashboard
 - [x] Sprint F02: Frontend project structure
 - [x] Sprint F03: Dashboard implementation
+- [x] Sprint F04: AI Chat with Text2Postgre + Real API
 
 ### 📋 Planned
 
-- [ ] Sprint F04: AI Chat for admin (Text2SQL)
-- [ ] Sprint F05: Transition to Real API
+- [ ] Sprint F05: Extended analytics and features
 
 ---
 
 ## 🔗 API Integration
 
-### Mock API (Current)
+### Real API (Current) ✅
 
-**Endpoint:** `GET /api/stats/dashboard`
+**Statistics Endpoint:** `GET /api/stats/dashboard`
+**Chat Endpoints:**
+- `POST /api/chat/message` - Send chat message
+- `GET /api/chat/history/{session_id}` - Get chat history
+- `DELETE /api/chat/history/{session_id}` - Clear chat history
 
 **Features:**
-- Mock data generation
-- Realistic statistics
-- CORS enabled for development
+- ✅ PostgreSQL integration
+- ✅ Real-time statistics from database
+- ✅ Text2Postgre for admin queries
+- ✅ Chat history persistence
+- ✅ CORS enabled for development
+- 🔜 JWT authentication (planned)
+- 🔜 Rate limiting (planned)
 
-**Start Mock API:**
+**Start Real API:**
 ```bash
 cd ..
-make api-dev
+make api-dev  # Real API by default
 ```
 
-### Real API (Sprint F05)
+### Migration from Mock to Real
 
-**Planned features:**
-- PostgreSQL integration
-- JWT authentication
-- Real-time statistics
-- Time-series endpoints
-- Rate limiting
+Sprint F04 completed the migration:
+- ✅ Real StatCollector using PostgreSQL
+- ✅ Chat API with database persistence
+- ✅ Text2Postgre pipeline for admin mode
 
 ---
 
@@ -423,6 +479,6 @@ This project is part of the systech-aidd system.
 
 ---
 
-**Last Updated:** 2025-10-17 (Sprint F03 completed)  
-**Version:** 1.0.0  
-**Status:** Ready for production (with Mock API)
+**Last Updated:** 2025-10-17 (Sprint F04 completed)  
+**Version:** 1.1.0  
+**Status:** Ready for production (with Real API + AI Chat)

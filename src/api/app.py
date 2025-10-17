@@ -1,13 +1,19 @@
 """FastAPI приложение для предоставления статистики через REST API."""
 
+import os
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.database import Database
 from src.stats.collector import StatCollector
 from src.stats.mock_collector import MockStatCollector
 from src.stats.models import DashboardStats
+from src.stats.real_collector import RealStatCollector
+
+# Импортируем chat router
+from .chat import router as chat_router
 
 # Создание FastAPI приложения
 app = FastAPI(
@@ -27,18 +33,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Подключаем chat router
+app.include_router(chat_router)
+
 
 # Dependency injection для StatCollector
 def get_stat_collector() -> StatCollector:
     """Создание экземпляра сборщика статистики.
 
-    В данной реализации используется MockStatCollector.
-    В будущем (Sprint F05) можно будет переключаться на Real реализацию
-    через конфигурацию.
+    Переключение между Mock и Real реализацией через переменную окружения:
+    - USE_REAL_STATS=false - использовать Mock данные
+    - USE_REAL_STATS=true или не установлена - использовать реальные данные из БД (default)
 
     Returns:
-        StatCollector: Экземпляр сборщика статистики
+        StatCollector: Экземпляр сборщика статистики (Mock или Real)
     """
+    use_real_stats = os.getenv("USE_REAL_STATS", "true").lower() == "true"
+
+    if use_real_stats:
+        # Используем реальные данные из PostgreSQL
+        database_url = os.getenv(
+            "DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/systech_aidd"
+        )
+        database_timeout = int(os.getenv("DATABASE_TIMEOUT", "10"))
+        database = Database(database_url, database_timeout)
+        return RealStatCollector(database)
+    # Используем Mock данные
     return MockStatCollector()
 
 
@@ -80,4 +100,3 @@ async def health_check() -> dict[str, str]:
         dict: Статус здоровья сервиса
     """
     return {"status": "healthy"}
-

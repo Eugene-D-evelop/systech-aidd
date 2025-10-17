@@ -105,11 +105,12 @@ make test-integration # Только интеграционные тесты
 make ci               # lint + test-unit
 ```
 
-### API сервер (Mock)
+### API сервер
 
 ```bash
-# Запуск API сервера для frontend разработки
-make api-dev             # Запуск в dev режиме с auto-reload
+# Запуск API сервера (Real API по умолчанию)
+make api-dev             # Запуск с Real StatCollector (PostgreSQL)
+make api-dev-real        # Явно указать Real API
 
 # Тестирование API
 make api-test            # Проверка работоспособности через curl
@@ -123,16 +124,23 @@ make api-docs            # Открыть Swagger UI (http://localhost:8000/docs
 # Health check
 curl http://localhost:8000/health
 
-# Получение статистики
+# Получение статистики (Real API)
 curl http://localhost:8000/api/stats/dashboard
 
-# С форматированием
-curl http://localhost:8000/api/stats/dashboard | python -m json.tool
+# Отправка сообщения в чат
+curl -X POST http://localhost:8000/api/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Сколько у нас пользователей?", "session_id": "test-123", "mode": "admin"}'
+
+# Получение истории чата
+curl http://localhost:8000/api/chat/history/test-123
 ```
 
-> 📖 **Подробнее:** [Tasklist F01](docs/tasklists/tasklist-F01.md) - Mock API для дашборда статистики
+> 📖 **Подробнее:** 
+> - [Tasklist F01](docs/tasklists/tasklist-F01.md) - Mock API для дашборда статистики
+> - [Sprint F04 Summary](docs/tasklists/sprint-F04-summary.md) - AI Chat с Text2Postgre
 
-### Frontend (Dashboard) 🆕
+### Frontend (Dashboard + AI Chat) 🎉
 
 ```bash
 # Запуск frontend dev server (требует Node.js 18+ и pnpm)
@@ -152,7 +160,7 @@ make frontend-type-check # TypeScript
 
 **Полный запуск (API + Frontend):**
 ```bash
-# Terminal 1: Mock API
+# Terminal 1: Real API
 make api-dev
 
 # Terminal 2: Frontend
@@ -161,10 +169,17 @@ make frontend-dev
 # Откройте http://localhost:3000/dashboard
 ```
 
+**Возможности:**
+- 📊 **Dashboard** - статистика из PostgreSQL
+- 💬 **AI Chat** - floating button в правом нижнем углу
+  - **Normal режим** - общение с AI-ассистентом
+  - **Admin режим** - Text2Postgre для вопросов по статистике
+
 > 📖 **Подробнее:** 
 > - [Frontend README](frontend/README.md) - документация frontend проекта
 > - [Frontend Roadmap](docs/frontend-roadmap.md) - спринты F01-F05
 > - [Sprint F03 Summary](docs/tasklists/sprint-F03-summary.md) - реализация Dashboard
+> - [Sprint F04 Summary](docs/tasklists/sprint-F04-summary.md) - AI Chat с Text2Postgre
 
 ### Перед коммитом
 
@@ -193,16 +208,20 @@ src/
 ├── conversation.py   # Менеджер истории диалогов (PostgreSQL)
 ├── database.py       # Подключение и работа с PostgreSQL
 ├── migrations.py     # Система миграций базы данных
+├── chat_manager.py   # Менеджер веб-чата (Normal/Admin режимы)
 ├── stats/            # Модуль статистики
 │   ├── collector.py      # Абстрактный интерфейс StatCollector
 │   ├── models.py         # Pydantic модели для API response
-│   └── mock_collector.py # Mock реализация (для разработки frontend)
+│   ├── mock_collector.py # Mock реализация
+│   └── real_collector.py # Real реализация (PostgreSQL)
 └── api/              # REST API модуль
-    └── app.py            # FastAPI приложение
+    ├── app.py            # FastAPI приложение
+    └── chat.py           # Chat endpoints (message, history)
 
 migrations/
-├── 001_create_messages.sql  # Создание таблицы messages
-└── 002_create_users.sql     # Создание таблицы users
+├── 001_create_messages.sql      # Telegram bot messages
+├── 002_create_users.sql         # User profiles
+└── 003_create_chat_messages.sql # Web chat messages
 ```
 
 > 📊 **Визуальное представление:** См. [Архитектурная визуализация](docs/architecture_visualization.md) - 12 диаграмм Mermaid с разных точек зрения (C4, Sequence, State, Data Flow и др.)
@@ -345,9 +364,9 @@ make test-integration
   - [Workflow TDD](.cursor/rules/workflow_tdd.mdc) - разработка по TDD подходу
 
 **Frontend:**
-- [Frontend проект](frontend/README.md) - веб-интерфейс (Dashboard готов) ✅
+- [Frontend проект](frontend/README.md) - веб-интерфейс (Dashboard + AI Chat готовы) ✅
 - [Frontend Vision](frontend/doc/frontend-vision.md) - концепция и архитектура
-- [Frontend Roadmap](docs/frontend-roadmap.md) - план разработки (F01-F03 завершены)
+- [Frontend Roadmap](docs/frontend-roadmap.md) - план разработки (F01-F04 завершены)
 
 ## 🔧 Качество кода
 
@@ -414,7 +433,7 @@ CREATE TABLE users (
 );
 ```
 
-**Таблица `messages`** - история сообщений:
+**Таблица `messages`** - история сообщений Telegram бота:
 ```sql
 CREATE TABLE messages (
     id SERIAL PRIMARY KEY,
@@ -425,6 +444,18 @@ CREATE TABLE messages (
     character_count INTEGER NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
+);
+```
+
+**Таблица `chat_messages`** - история веб-чата:
+```sql
+CREATE TABLE chat_messages (
+    id SERIAL PRIMARY KEY,
+    session_id VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+    content TEXT NOT NULL,
+    sql_query TEXT NULL,  -- Only for admin mode responses
+    created_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
