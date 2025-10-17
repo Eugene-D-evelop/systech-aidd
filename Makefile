@@ -1,4 +1,4 @@
-.PHONY: install run lint format test test-unit test-integration ci migrate db-up db-down api-dev api-test api-docs
+.PHONY: install run lint format test test-unit test-integration ci migrate db-up db-down api-dev api-test api-docs frontend-install frontend-dev frontend-build frontend-start frontend-lint frontend-format frontend-type-check
 
 install:
 	uv sync
@@ -43,4 +43,26 @@ test-integration:
 	uv run pytest -m integration -v
 
 ci: lint test-unit
+
+# Frontend commands
+frontend-install:
+	cd frontend && pnpm install
+
+frontend-dev:
+	cd frontend && pnpm dev
+
+frontend-build:
+	cd frontend && pnpm build
+
+frontend-start:
+	cd frontend && pnpm start
+
+frontend-lint:
+	cd frontend && pnpm lint
+
+frontend-format:
+	cd frontend && pnpm format
+
+frontend-type-check:
+	cd frontend && pnpm tsc --noEmit
 
