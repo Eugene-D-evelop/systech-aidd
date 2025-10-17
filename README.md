@@ -132,6 +132,40 @@ curl http://localhost:8000/api/stats/dashboard | python -m json.tool
 
 > 📖 **Подробнее:** [Tasklist F01](docs/tasklists/tasklist-F01.md) - Mock API для дашборда статистики
 
+### Frontend (Dashboard) 🆕
+
+```bash
+# Запуск frontend dev server (требует Node.js 18+ и pnpm)
+cd frontend
+pnpm install             # Установка зависимостей (первый раз)
+pnpm dev                 # Запуск dev server (localhost:3000)
+
+# Или из корня проекта через Makefile
+make frontend-install    # Установка зависимостей
+make frontend-dev        # Запуск dev server
+
+# Проверка качества кода
+make frontend-lint       # ESLint
+make frontend-format     # Prettier
+make frontend-type-check # TypeScript
+```
+
+**Полный запуск (API + Frontend):**
+```bash
+# Terminal 1: Mock API
+make api-dev
+
+# Terminal 2: Frontend
+make frontend-dev
+
+# Откройте http://localhost:3000/dashboard
+```
+
+> 📖 **Подробнее:** 
+> - [Frontend README](frontend/README.md) - документация frontend проекта
+> - [Frontend Roadmap](docs/frontend-roadmap.md) - спринты F01-F05
+> - [Sprint F03 Summary](docs/tasklists/sprint-F03-summary.md) - реализация Dashboard
+
 ### Перед коммитом
 
 Всегда запускайте:
@@ -311,8 +345,9 @@ make test-integration
   - [Workflow TDD](.cursor/rules/workflow_tdd.mdc) - разработка по TDD подходу
 
 **Frontend:**
-- [Frontend проект](frontend/README.md) - веб-интерфейс (в разработке) 🚧
-- [Frontend Vision](frontend/doc/frontend-vision.md) - концепция и архитектура (создается в F02)
+- [Frontend проект](frontend/README.md) - веб-интерфейс (Dashboard готов) ✅
+- [Frontend Vision](frontend/doc/frontend-vision.md) - концепция и архитектура
+- [Frontend Roadmap](docs/frontend-roadmap.md) - план разработки (F01-F03 завершены)
 
 ## 🔧 Качество кода
 

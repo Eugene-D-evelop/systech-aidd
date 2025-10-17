@@ -210,8 +210,11 @@ make frontend-type-check
 ### Sprint Documentation
 
 - **[Sprint F01: Mock API](../docs/tasklists/tasklist-F01.md)** - Mock API implementation
+  - [Summary](../docs/tasklists/sprint-F01-summary.md)
 - **[Sprint F02: Frontend Init](../docs/tasklists/tasklist-F02.md)** - Project structure setup
 - **[Sprint F03: Dashboard](../docs/tasklists/tasklist-F03.md)** - Dashboard implementation
+  - [Plan](./doc/plans/s3-dashboard-plan.md) - Detailed sprint plan
+  - [Summary](../docs/tasklists/sprint-F03-summary.md) - Sprint summary
 - **[Frontend Roadmap](../docs/frontend-roadmap.md)** - Full development roadmap
 
 ---
