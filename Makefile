@@ -1,4 +1,4 @@
-.PHONY: install run lint format test test-unit test-integration ci migrate db-up db-down api-dev api-test api-docs frontend-install frontend-dev frontend-build frontend-start frontend-lint frontend-format frontend-type-check
+.PHONY: install run lint format test test-unit test-integration ci migrate db-up db-down api-dev api-dev-real api-test api-docs frontend-install frontend-dev frontend-build frontend-start frontend-lint frontend-format frontend-type-check
 
 install:
 	uv sync
@@ -8,6 +8,9 @@ run:
 
 api-dev:
 	uv run python -m src.api_main
+
+api-dev-real:
+	USE_REAL_STATS=true uv run python -m src.api_main
 
 api-test:
 	@echo "Testing API endpoint..."
