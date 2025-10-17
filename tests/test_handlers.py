@@ -80,15 +80,24 @@ async def test_start_command(message_handler):
 
 
 @pytest.mark.asyncio
-async def test_reset_command(message_handler, conversation):
+async def test_reset_command(message_handler, conversation, database):
     """Тест обработчика команды /reset."""
     # Создаем мок объект сообщения
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 456
+    mock_message.from_user.username = "testuser"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 123
     mock_message.answer = AsyncMock()
+
+    # Создаем пользователя перед добавлением сообщений
+    await database.upsert_user(456, "testuser", "Test", "User", "en", False, False)
 
     # Добавляем сообщения в историю
     await conversation.add_message(123, 456, "user", "Test message 1")
@@ -119,6 +128,12 @@ async def test_handle_message_real_llm(message_handler, conversation):
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 789
+    mock_message.from_user.username = "testuser789"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 456
     mock_message.text = "Say 'test passed' and nothing else"
@@ -157,12 +172,18 @@ async def test_handle_message_real_llm(message_handler, conversation):
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_handle_message_conversation_context(message_handler, conversation):
+async def test_handle_message_conversation_context(message_handler, conversation, database):
     """Тест что handle_message использует контекст диалога."""
     # Создаем мок сообщения
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 111
+    mock_message.from_user.username = "testuser111"
+    mock_message.from_user.first_name = "Bob"
+    mock_message.from_user.last_name = "Smith"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 222
     mock_message.text = "What is my name?"
@@ -170,6 +191,9 @@ async def test_handle_message_conversation_context(message_handler, conversation
     mock_bot = MagicMock()
     mock_bot.send_chat_action = AsyncMock()
     mock_message.bot = mock_bot
+
+    # Создаем пользователя
+    await database.upsert_user(111, "testuser111", "Bob", "Smith", "en", False, False)
 
     # Добавляем предыдущий контекст
     await conversation.add_message(222, 111, "user", "My name is Bob")
@@ -192,6 +216,12 @@ async def test_handle_message_without_text(message_handler):
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 333
+    mock_message.from_user.username = "testuser333"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 444
     mock_message.text = None  # Сообщение без текста
@@ -237,6 +267,12 @@ async def test_handle_message_timeout_error(message_handler, conversation):
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 999
+    mock_message.from_user.username = "testuser999"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 888
     mock_message.text = "Test message"
@@ -267,6 +303,12 @@ async def test_handle_message_api_error(message_handler, conversation):
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 777
+    mock_message.from_user.username = "testuser777"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 666
     mock_message.text = "Test message"
@@ -299,6 +341,12 @@ async def test_handle_message_llm_error(message_handler, conversation):
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 555
+    mock_message.from_user.username = "testuser555"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 444
     mock_message.text = "Test message"
@@ -328,6 +376,12 @@ async def test_handle_message_unexpected_error(message_handler, conversation):
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 333
+    mock_message.from_user.username = "testuser333_2"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 222
     mock_message.text = "Test message"
@@ -357,6 +411,12 @@ async def test_handle_message_success(message_handler, conversation):
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 123
+    mock_message.from_user.username = "testuser123"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "User"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 456
     mock_message.text = "Hello"
@@ -409,6 +469,12 @@ async def test_role_command(message_handler):
     mock_message = MagicMock(spec=types.Message)
     mock_message.from_user = MagicMock(spec=types.User)
     mock_message.from_user.id = 123
+    mock_message.from_user.username = "testuser_role"
+    mock_message.from_user.first_name = "Test"
+    mock_message.from_user.last_name = "Role"
+    mock_message.from_user.language_code = "en"
+    mock_message.from_user.is_premium = False
+    mock_message.from_user.is_bot = False
     mock_message.chat = MagicMock(spec=types.Chat)
     mock_message.chat.id = 456
     mock_message.answer = AsyncMock()

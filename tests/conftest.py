@@ -34,7 +34,7 @@ def database(test_database_url: str) -> Database:
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
             """)
-            
+
             # Создаем таблицу messages
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS messages (
@@ -49,15 +49,16 @@ def database(test_database_url: str) -> Database:
                     CHECK (role IN ('user', 'assistant', 'system'))
                 );
             """)
-            
+
             # Создаем индексы
             cur.execute("""
                 CREATE INDEX IF NOT EXISTS idx_chat_user ON messages (chat_id, user_id);
                 CREATE INDEX IF NOT EXISTS idx_deleted ON messages (deleted_at);
-                CREATE INDEX IF NOT EXISTS idx_users_username ON users (username) WHERE username IS NOT NULL;
+                CREATE INDEX IF NOT EXISTS idx_users_username
+                    ON users (username) WHERE username IS NOT NULL;
                 CREATE INDEX IF NOT EXISTS idx_users_created_at ON users (created_at);
             """)
-            
+
             # Добавляем foreign key если его еще нет
             cur.execute("""
                 DO $$
@@ -65,10 +66,10 @@ def database(test_database_url: str) -> Database:
                     IF NOT EXISTS (
                         SELECT 1 FROM pg_constraint WHERE conname = 'fk_messages_user_id'
                     ) THEN
-                        ALTER TABLE messages 
-                        ADD CONSTRAINT fk_messages_user_id 
-                        FOREIGN KEY (user_id) 
-                        REFERENCES users(user_id) 
+                        ALTER TABLE messages
+                        ADD CONSTRAINT fk_messages_user_id
+                        FOREIGN KEY (user_id)
+                        REFERENCES users(user_id)
                         ON DELETE CASCADE;
                     END IF;
                 END $$;

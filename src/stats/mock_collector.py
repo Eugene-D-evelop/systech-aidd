@@ -41,8 +41,8 @@ class MockStatCollector(StatCollector):
         # Распределение по языкам
         ru_count = int(total_users * random.uniform(0.55, 0.7))
         en_count = int(total_users * random.uniform(0.2, 0.35))
-        uk_count = int(total_users * random.uniform(0.03, 0.08))
-        other_count = total_users - (ru_count + en_count + uk_count)
+        de_count = int(total_users * random.uniform(0.03, 0.08))
+        other_count = total_users - (ru_count + en_count + de_count)
 
         # Корректировка для точного соответствия
         if other_count < 0:
@@ -76,7 +76,7 @@ class MockStatCollector(StatCollector):
                 by_language={
                     "ru": ru_count,
                     "en": en_count,
-                    "uk": uk_count,
+                    "de": de_count,
                     "other": other_count,
                 },
             ),

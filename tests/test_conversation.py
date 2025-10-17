@@ -19,10 +19,13 @@ async def test_conversation_initialization(conversation: Conversation) -> None:
 
 
 @pytest.mark.asyncio
-async def test_add_message(conversation: Conversation) -> None:
+async def test_add_message(conversation: Conversation, database: Database) -> None:
     """Тест добавления сообщения."""
     chat_id = 123
     user_id = 456
+
+    # Создаем пользователя перед добавлением сообщения
+    await database.upsert_user(user_id, "test_user", "Test", "User", "en", False, False)
 
     await conversation.add_message(chat_id, user_id, "user", "Hello")
 
@@ -33,10 +36,13 @@ async def test_add_message(conversation: Conversation) -> None:
 
 
 @pytest.mark.asyncio
-async def test_add_multiple_messages(conversation: Conversation) -> None:
+async def test_add_multiple_messages(conversation: Conversation, database: Database) -> None:
     """Тест добавления нескольких сообщений."""
     chat_id = 123
     user_id = 456
+
+    # Создаем пользователя перед добавлением сообщений
+    await database.upsert_user(user_id, "test_user", "Test", "User", "en", False, False)
 
     await conversation.add_message(chat_id, user_id, "user", "Hello")
     await conversation.add_message(chat_id, user_id, "assistant", "Hi there!")
@@ -50,10 +56,13 @@ async def test_add_multiple_messages(conversation: Conversation) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_history_with_limit(conversation: Conversation) -> None:
+async def test_get_history_with_limit(conversation: Conversation, database: Database) -> None:
     """Тест получения истории с лимитом."""
     chat_id = 123
     user_id = 456
+
+    # Создаем пользователя
+    await database.upsert_user(user_id, "test_user", "Test", "User", "en", False, False)
 
     # Добавляем 5 сообщений
     for i in range(5):
@@ -68,10 +77,13 @@ async def test_get_history_with_limit(conversation: Conversation) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_history_no_limit(conversation: Conversation) -> None:
+async def test_get_history_no_limit(conversation: Conversation, database: Database) -> None:
     """Тест получения всей истории без лимита."""
     chat_id = 123
     user_id = 456
+
+    # Создаем пользователя
+    await database.upsert_user(user_id, "test_user", "Test", "User", "en", False, False)
 
     for i in range(5):
         await conversation.add_message(chat_id, user_id, "user", f"Message {i}")
@@ -88,10 +100,13 @@ async def test_get_history_empty(conversation: Conversation) -> None:
 
 
 @pytest.mark.asyncio
-async def test_clear_history(conversation: Conversation) -> None:
+async def test_clear_history(conversation: Conversation, database: Database) -> None:
     """Тест очистки истории (soft delete)."""
     chat_id = 123
     user_id = 456
+
+    # Создаем пользователя
+    await database.upsert_user(user_id, "test_user", "Test", "User", "en", False, False)
 
     # Добавляем сообщения
     await conversation.add_message(chat_id, user_id, "user", "Hello")
@@ -117,13 +132,17 @@ async def test_clear_history_nonexistent(conversation: Conversation) -> None:
 
 
 @pytest.mark.asyncio
-async def test_multiple_users(conversation: Conversation) -> None:
+async def test_multiple_users(conversation: Conversation, database: Database) -> None:
     """Тест работы с несколькими пользователями."""
     user1_chat = 123
     user1_id = 456
 
     user2_chat = 789
     user2_id = 101
+
+    # Создаем обоих пользователей
+    await database.upsert_user(user1_id, "user1", "User", "One", "en", False, False)
+    await database.upsert_user(user2_id, "user2", "User", "Two", "en", False, False)
 
     # Добавляем сообщения для разных пользователей
     await conversation.add_message(user1_chat, user1_id, "user", "User 1 message")
@@ -140,10 +159,13 @@ async def test_multiple_users(conversation: Conversation) -> None:
 
 
 @pytest.mark.asyncio
-async def test_message_format(conversation: Conversation) -> None:
+async def test_message_format(conversation: Conversation, database: Database) -> None:
     """Тест формата сообщений (без timestamp и других полей в get_history)."""
     chat_id = 123
     user_id = 456
+
+    # Создаем пользователя
+    await database.upsert_user(user_id, "test_user", "Test", "User", "en", False, False)
 
     await conversation.add_message(chat_id, user_id, "user", "Test")
 
@@ -159,8 +181,11 @@ async def test_message_format(conversation: Conversation) -> None:
 
 
 @pytest.mark.asyncio
-async def test_user_key_generation(conversation: Conversation) -> None:
+async def test_user_key_generation(conversation: Conversation, database: Database) -> None:
     """Тест генерации уникальных ключей для пользователей."""
+    # Создаем пользователей
+    await database.upsert_user(456, "user1", "User", "One", "en", False, False)
+
     # Один пользователь в разных чатах - разные ключи
     await conversation.add_message(123, 456, "user", "Chat 1")
     await conversation.add_message(789, 456, "user", "Chat 2")
@@ -180,6 +205,9 @@ async def test_character_count_calculation(conversation: Conversation, database:
     chat_id = 123
     user_id = 456
     content = "Test message with 25 chars"  # 27 символов
+
+    # Создаем пользователя
+    await database.upsert_user(user_id, "test_user", "Test", "User", "en", False, False)
 
     await conversation.add_message(chat_id, user_id, "user", content)
 
@@ -205,6 +233,9 @@ async def test_soft_delete_persists_data(conversation: Conversation, database: D
     """Тест что soft delete не удаляет данные физически."""
     chat_id = 123
     user_id = 456
+
+    # Создаем пользователя
+    await database.upsert_user(user_id, "test_user", "Test", "User", "en", False, False)
 
     await conversation.add_message(chat_id, user_id, "user", "Test message")
     await conversation.clear_history(chat_id, user_id)
