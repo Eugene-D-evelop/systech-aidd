@@ -1,0 +1,39 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# Virtual environments
+.env
+.venv/
+venv/
+
+# Node modules
+node_modules/
+
+# Frontend directory
+frontend/
+
+# Documentation
+docs/
+
+# Tests
+tests/
+
+# DevOps
+devops/
+
+# Git
+.git/
+.gitignore
+
+# Project files
+README.md
+Makefile
+

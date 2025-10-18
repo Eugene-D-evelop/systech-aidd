@@ -7,6 +7,59 @@ LLM-ассистент в виде Telegram-бота через OpenRouter API
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](http://mypy-lang.org/)
 [![Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen.svg)](https://github.com/pytest-dev/pytest-cov)
 
+## 🐳 Docker запуск (рекомендуется)
+
+### Быстрый старт в Docker
+
+1. Создайте `.env` файл:
+```bash
+cp .env.example .env
+# Отредактируйте .env и добавьте свои ключи API
+```
+
+2. Запустите все сервисы:
+```bash
+docker-compose up
+```
+
+3. Откройте в браузере:
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8000/docs
+- **Database:** localhost:5433
+
+**Остановка:**
+```bash
+docker-compose down
+```
+
+**Пересборка после изменений:**
+```bash
+docker-compose up --build
+```
+
+### Отдельные команды
+
+```bash
+# Только база данных
+docker-compose up postgres
+
+# Bot + API + база данных
+docker-compose up postgres bot api
+
+# Все сервисы в фоне
+docker-compose up -d
+
+# Логи определенного сервиса
+docker-compose logs -f api
+docker-compose logs -f bot
+
+# Перезапуск сервиса
+docker-compose restart api
+docker-compose restart bot
+```
+
+---
+
 ## 🚀 Быстрый старт
 
 ### Предварительные требования
