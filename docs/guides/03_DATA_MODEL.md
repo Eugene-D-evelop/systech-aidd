@@ -19,6 +19,10 @@ class Config(BaseSettings):
     temperature: float = 0.7
     max_tokens: int = 1000
     timeout: int = 60
+    
+    # База данных
+    database_url: str = "postgresql://postgres:postgres@localhost:5433/systech_aidd"
+    database_timeout: int = 10
 ```
 
 ### Параметры
@@ -33,6 +37,8 @@ class Config(BaseSettings):
 | `temperature` | float | ❌ | Креативность LLM 0.0-2.0 (default: 0.7) |
 | `max_tokens` | int | ❌ | Максимум токенов в ответе (default: 1000) |
 | `timeout` | int | ❌ | Таймаут API запросов в секундах (default: 60) |
+| `database_url` | str | ❌ | URL подключения к PostgreSQL (default: localhost:5433) |
+| `database_timeout` | int | ❌ | Таймаут подключения к БД в секундах (default: 10) |
 
 ### Особенности
 
@@ -52,6 +58,8 @@ MAX_HISTORY_LENGTH=10
 TEMPERATURE=0.7
 MAX_TOKENS=1000
 TIMEOUT=60
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/systech_aidd
+DATABASE_TIMEOUT=10
 ```
 
 ## Message - Структура сообщения
@@ -125,19 +133,61 @@ graph LR
 }
 ```
 
-## Conversation Storage - Хранилище диалогов
+## Database Schema - Схема базы данных
 
-### Структура
+### Технология
 
-```python
-from collections import defaultdict
+**PostgreSQL 16** через **psycopg3** драйвер
 
-conversations: defaultdict[str, list[dict]] = defaultdict(list)
-```
+### Таблицы
+
+#### Таблица `users`
+
+Хранение информации о пользователях Telegram.
+
+| Колонка | Тип | Описание |
+|---------|-----|----------|
+| `user_id` | BIGINT PRIMARY KEY | ID пользователя Telegram |
+| `username` | VARCHAR(255) | @username (может быть NULL) |
+| `first_name` | VARCHAR(255) | Имя пользователя |
+| `last_name` | VARCHAR(255) | Фамилия (может быть NULL) |
+| `language_code` | VARCHAR(10) | Код языка (ru, en, и т.д.) |
+| `is_premium` | BOOLEAN | Наличие Telegram Premium |
+| `is_bot` | BOOLEAN | Является ли пользователь ботом |
+| `created_at` | TIMESTAMPTZ | Дата первого взаимодействия |
+| `updated_at` | TIMESTAMPTZ | Дата последнего обновления |
+
+#### Таблица `messages`
+
+Хранение истории диалогов с ботом.
+
+| Колонка | Тип | Описание |
+|---------|-----|----------|
+| `id` | BIGSERIAL PRIMARY KEY | Уникальный ID сообщения |
+| `chat_id` | BIGINT | ID чата Telegram |
+| `user_id` | BIGINT → users | ID пользователя (foreign key) |
+| `role` | VARCHAR(20) | Роль: user, assistant, system |
+| `content` | TEXT | Текст сообщения |
+| `character_count` | INTEGER | Количество символов |
+| `created_at` | TIMESTAMPTZ | Время создания сообщения |
+| `deleted_at` | TIMESTAMPTZ | Время удаления (NULL = не удалено) |
+
+#### Таблица `chat_messages`
+
+Хранение истории веб-чата (админ панель).
+
+| Колонка | Тип | Описание |
+|---------|-----|----------|
+| `id` | BIGSERIAL PRIMARY KEY | Уникальный ID сообщения |
+| `session_id` | VARCHAR(255) | ID сессии веб-чата |
+| `role` | VARCHAR(20) | Роль: user, assistant |
+| `content` | TEXT | Текст сообщения |
+| `sql_query` | TEXT | SQL запрос (только для admin mode) |
+| `created_at` | TIMESTAMPTZ | Время создания сообщения |
 
 ### Ключ пользователя
 
-Формат: `"chat_id:user_id"`
+Формат идентификации: `"chat_id:user_id"`
 
 **Примеры**:
 - Личный чат: `"123456789:123456789"`
@@ -146,46 +196,50 @@ conversations: defaultdict[str, list[dict]] = defaultdict(list)
 ### Схема данных
 
 ```mermaid
-graph TB
-    STORAGE[Conversation Storage<br/>defaultdict]
-    
-    USER1["Key: '123456789:111111'<br/>(User 1 в чате 123456789)"]
-    USER2["Key: '123456789:222222'<br/>(User 2 в чате 123456789)"]
-    USER3["Key: '987654321:111111'<br/>(User 1 в чате 987654321)"]
-    
-    HIST1["[msg1, msg2, msg3]<br/>История User 1"]
-    HIST2["[msg1, msg2]<br/>История User 2"]
-    HIST3["[msg1]<br/>История User 1"]
-    
-    STORAGE --> USER1
-    STORAGE --> USER2
-    STORAGE --> USER3
-    
-    USER1 --> HIST1
-    USER2 --> HIST2
-    USER3 --> HIST3
-    
-    style STORAGE fill:#c05621,stroke:#dd6b20,stroke-width:2px,color:#fff
-    style HIST1 fill:#2c5282,stroke:#2b6cb0,stroke-width:2px,color:#fff
-    style HIST2 fill:#2c5282,stroke:#2b6cb0,stroke-width:2px,color:#fff
-    style HIST3 fill:#2c5282,stroke:#2b6cb0,stroke-width:2px,color:#fff
+erDiagram
+    USERS ||--o{ MESSAGES : creates
+    USERS {
+        bigint user_id PK
+        varchar username
+        varchar first_name
+        varchar last_name
+        varchar language_code
+        boolean is_premium
+        boolean is_bot
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    MESSAGES {
+        bigserial id PK
+        bigint chat_id
+        bigint user_id FK
+        varchar role
+        text content
+        integer character_count
+        timestamptz created_at
+        timestamptz deleted_at
+    }
+    CHAT_MESSAGES {
+        bigserial id PK
+        varchar session_id
+        varchar role
+        text content
+        text sql_query
+        timestamptz created_at
+    }
 ```
 
-### Пример структуры
+### Пример SQL запроса
 
-```python
-{
-    "123456789:111111": [
-        {"role": "user", "content": "Привет!", "timestamp": 1729098000.0},
-        {"role": "assistant", "content": "Здравствуйте!", "timestamp": 1729098001.5},
-        {"role": "user", "content": "def test(): pass", "timestamp": 1729098010.0},
-        {"role": "assistant", "content": "Код выглядит хорошо", "timestamp": 1729098012.3}
-    ],
-    "123456789:222222": [
-        {"role": "user", "content": "Помоги с кодом", "timestamp": 1729098100.0},
-        {"role": "assistant", "content": "Конечно!", "timestamp": 1729098101.2}
-    ]
-}
+```sql
+-- Получение истории диалога пользователя
+SELECT role, content
+FROM messages
+WHERE chat_id = 123456789 
+  AND user_id = 123456789 
+  AND deleted_at IS NULL
+ORDER BY created_at ASC
+LIMIT 10;
 ```
 
 ## Операции с данными
@@ -297,44 +351,51 @@ messages = [
 
 ## Особенности модели данных
 
-### In-memory storage
+### PostgreSQL persistence
 
 **Преимущества**:
-- ✅ Простая реализация
-- ✅ Быстрый доступ
-- ✅ Не требует БД
+- ✅ Персистентное хранение (данные сохраняются между перезапусками)
+- ✅ Масштабируемость (может работать с множеством экземпляров бота)
+- ✅ Транзакции и ACID гарантии
+- ✅ Индексы для быстрого поиска
+- ✅ Foreign keys для целостности данных
 
-**Ограничения**:
-- ❌ История теряется при перезапуске
-- ❌ Не масштабируется на множество серверов
-- ❌ Нет персистентности
+**Особенности реализации**:
+- Используем чистый SQL через psycopg3 (без ORM для простоты)
+- Soft-delete стратегия (`deleted_at IS NULL`)
+- SQL миграции для версионирования схемы
 
-**Вывод**: Это нормально для MVP и разработки.
+### Soft-delete
 
-### defaultdict
+Вместо физического удаления используется soft-delete:
 
-Использование `defaultdict(list)` упрощает код:
+```sql
+-- Вместо DELETE
+UPDATE messages 
+SET deleted_at = CURRENT_TIMESTAMP 
+WHERE chat_id = 123 AND user_id = 456;
 
-**Без defaultdict** (плохо):
-```python
-if user_key not in conversations:
-    conversations[user_key] = []
-conversations[user_key].append(message)
+-- Выборка только активных
+SELECT * FROM messages 
+WHERE deleted_at IS NULL;
 ```
 
-**С defaultdict** (хорошо):
-```python
-conversations[user_key].append(message)
-```
+**Преимущества**:
+- ✅ Возможность восстановления данных
+- ✅ Аудит и аналитика удаленных сообщений
+- ✅ Соответствие требованиям GDPR (можно полностью удалить позже)
 
-### Фильтрация timestamp
+### Timestamps и метаданные
 
-Timestamp хранится для отладки, но **не отправляется в LLM**:
+Все таблицы имеют временные метки:
+- `created_at` - время создания записи
+- `updated_at` (только users) - время последнего обновления
+- `deleted_at` (messages) - время удаления (NULL = активна)
 
-- В storage: `{"role": "user", "content": "...", "timestamp": 123.45}`
-- В LLM: `{"role": "user", "content": "..."}`
-
-Это экономит токены и упрощает формат для API.
+Данные метки используются для:
+- Сортировки истории диалогов
+- Аналитики активности пользователей
+- Очистки старых данных
 
 ## Что дальше?
 

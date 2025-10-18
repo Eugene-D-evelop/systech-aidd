@@ -18,7 +18,7 @@
 - ❌ Сложные паттерны проектирования (фабрики, стратегии)
 - ❌ Множественные уровни абстракции
 - ❌ Преждевременная оптимизация
-- ❌ Базы данных (используем in-memory)
+- ❌ ORM (используем чистый SQL через psycopg3)
 - ❌ Retry, streaming, кеширование (пока не нужно)
 
 ## Архитектурная схема
@@ -38,12 +38,14 @@ graph TB
         BOT[TelegramBot<br/>aiogram]
         HANDLER[MessageHandler<br/>commands + messages]
         LLM[LLMClient<br/>OpenRouter API]
-        CONV[Conversation<br/>in-memory storage]
+        CONV[Conversation<br/>история диалогов]
+        DB[Database<br/>PostgreSQL]
     end
     
-    subgraph "External APIs"
+    subgraph "External Services"
         TELEGRAM[Telegram API]
         OPENROUTER[OpenRouter API]
+        POSTGRES[(PostgreSQL<br/>База данных)]
     end
     
     MAIN --> CONFIG
@@ -52,13 +54,16 @@ graph TB
     MAIN --> HANDLER
     MAIN --> LLM
     MAIN --> CONV
+    MAIN --> DB
     
     BOT --> HANDLER
     HANDLER --> LLM
     HANDLER --> CONV
+    CONV --> DB
     
     BOT <--> TELEGRAM
     LLM <--> OPENROUTER
+    DB <--> POSTGRES
     
     style MAIN fill:#2d3748,stroke:#4a5568,stroke-width:2px,color:#fff
     style CONFIG fill:#2c5282,stroke:#2b6cb0,stroke-width:2px,color:#fff
@@ -76,23 +81,34 @@ sequenceDiagram
     participant T as Telegram API
     participant H as MessageHandler
     participant C as Conversation
+    participant DB as Database
+    participant PG as PostgreSQL
     participant L as LLMClient
     participant O as OpenRouter
 
     U->>T: Отправка сообщения
     T->>H: Получение через polling
     H->>C: Добавление в историю
+    C->>DB: add_message()
+    DB->>PG: INSERT INTO messages
+    PG-->>DB: OK
     H->>C: Получение истории
+    C->>DB: get_history()
+    DB->>PG: SELECT FROM messages
+    PG-->>DB: История
+    DB-->>C: История
     C-->>H: История диалога
     H->>L: Запрос с историей
     L->>O: API запрос
     O-->>L: Ответ LLM
     L-->>H: Текст ответа
     H->>C: Сохранение ответа
+    C->>DB: add_message()
+    DB->>PG: INSERT INTO messages
     H->>T: Отправка ответа
     T->>U: Получение ответа
     
-    Note over H,C: in-memory storage<br/>defaultdict
+    Note over DB,PG: PostgreSQL<br/>psycopg3
     Note over L,O: async HTTP<br/>OpenAI SDK
 ```
 
@@ -161,19 +177,32 @@ sequenceDiagram
 - `APIError` - ошибка API
 - `LLMError` - другие ошибки
 
-### conversation.py - Хранилище диалогов
+### database.py - Работа с PostgreSQL
 
-**Ответственность**: Управление историей сообщений
+**Ответственность**: Слой работы с базой данных
 
-**Хранилище**: `defaultdict[str, list[dict]]` (in-memory)
-
-**Ключ**: `"chat_id:user_id"` - разделение истории по пользователям
+**Технологии**: psycopg3 (PostgreSQL драйвер)
 
 **Методы**:
-- `add_message()` - добавление сообщения
+- `add_message()` - добавление сообщения в БД
+- `get_history()` - получение истории из БД
+- `clear_history()` - soft delete сообщений
+- `upsert_user()` - создание/обновление пользователя
+- `get_user()` - получение информации о пользователе
+- `get_user_stats()` - статистика использования
+
+### conversation.py - Управление диалогами
+
+**Ответственность**: Управление историей сообщений через БД
+
+**Хранилище**: PostgreSQL (таблица `messages`)
+
+**Зависимости**: Database
+
+**Методы**:
+- `add_message()` - добавление сообщения (делегирует в Database)
 - `get_history()` - получение истории с лимитом
-- `clear_history()` - очистка истории
-- `get_stats()` - статистика
+- `clear_history()` - очистка истории (soft delete)
 
 ## Ролевая модель AI-продукта
 
@@ -219,6 +248,11 @@ graph LR
         AIOGRAM[aiogram 3.x<br/>Telegram Bot]
         OPENAI[openai SDK<br/>LLM client]
         PYDANTIC[pydantic 2.x<br/>validation]
+        PSYCOPG[psycopg3<br/>PostgreSQL driver]
+    end
+    
+    subgraph "Database"
+        POSTGRES[PostgreSQL 16<br/>persistance]
     end
     
     subgraph "Quality Tools"
@@ -242,6 +276,8 @@ graph LR
 | **aiogram 3.x** | Современный async Telegram фреймворк |
 | **openai SDK** | Официальный SDK, совместимый с OpenRouter |
 | **pydantic** | Валидация конфигурации, type safety |
+| **PostgreSQL 16** | Надежная БД для персистентного хранения |
+| **psycopg3** | Современный PostgreSQL драйвер, чистый SQL |
 | **ruff** | Быстрый линтер, замена flake8/black/isort |
 | **mypy strict** | Гарантия типобезопасности |
 
@@ -250,18 +286,20 @@ graph LR
 ### Принципы
 
 1. **Config** - независимый, используется всеми
-2. **TelegramBot** - знает только о Config
-3. **LLMClient** - знает только о Config, бросает исключения
-4. **MessageHandler** - центральный компонент, обрабатывает ошибки
-5. **Conversation** - независимый, простое хранилище
+2. **Database** - низкоуровневый слой работы с PostgreSQL
+3. **TelegramBot** - знает только о Config
+4. **LLMClient** - знает только о Config, бросает исключения
+5. **MessageHandler** - центральный компонент, обрабатывает ошибки
+6. **Conversation** - управляет диалогами через Database
 
 ### Разделение ответственности (SRP)
 
 | Компонент | Ответственность |
 |-----------|-----------------|
+| Database | Работа с PostgreSQL, **чистый SQL** |
 | LLMClient | Работа с API, **не знает о UI** |
 | MessageHandler | UI логика, **обработка ошибок** |
-| Conversation | Хранение данных, **не знает о логике** |
+| Conversation | Управление диалогами, **делегирует в Database** |
 | TelegramBot | Инициализация, **не знает о бизнес-логике** |
 
 ### Обработка ошибок
@@ -296,12 +334,14 @@ graph TD
 
 ## Особенности реализации
 
-### In-memory storage
+### PostgreSQL persistence
 
-История диалогов хранится в памяти (`defaultdict`):
-- ✅ Простота реализации
-- ✅ Быстрый доступ
-- ❌ Теряется при перезапуске (это нормально для MVP)
+История диалогов и пользователей хранится в PostgreSQL:
+- ✅ Персистентное хранение (сохраняется между перезапусками)
+- ✅ Soft-delete стратегия (deleted_at timestamp)
+- ✅ SQL миграции для версионирования схемы
+- ✅ Чистый SQL через psycopg3 (без ORM для простоты)
+- ✅ Foreign keys и индексы для целостности данных
 
 ### Асинхронность
 

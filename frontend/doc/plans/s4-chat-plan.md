@@ -296,3 +296,4 @@ CREATE INDEX idx_chat_session ON chat_messages(session_id, created_at);
 - [ ] Тестирование и отладка всех компонентов
 - [ ] Обновить документацию (roadmap, summary)
 
+

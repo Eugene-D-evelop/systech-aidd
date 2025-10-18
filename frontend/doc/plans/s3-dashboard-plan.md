@@ -206,3 +206,4 @@ frontend/src/
 - [ ] Добавить loading.tsx skeleton UI и улучшить error handling
 - [ ] Финальная полировка responsive дизайна и тестирование на разных устройствах
 
+

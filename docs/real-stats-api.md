@@ -36,27 +36,27 @@ src/stats/
 
 ## Использование
 
-### 1. Запуск API с Mock данными (по умолчанию)
+### 1. Запуск API с Real данными из БД (по умолчанию)
 
 ```bash
 make api-dev
 ```
 
-API будет использовать `MockStatCollector` - генерация случайных данных.
+API будет использовать `RealStatCollector` - реальные данные из PostgreSQL.
 
-### 2. Запуск API с Real данными из БД
+### 2. Запуск API с Mock данными (для тестирования)
 
 ```bash
-make api-dev-real
+USE_REAL_STATS=false make api-dev
 ```
 
 Или вручную:
 
 ```bash
-USE_REAL_STATS=true uv run python -m src.api_main
+USE_REAL_STATS=false uv run python -m src.api_main
 ```
 
-API будет использовать `RealStatCollector` - реальные данные из PostgreSQL.
+API будет использовать `MockStatCollector` - генерация случайных данных.
 
 ### 3. Проверка статистики
 
@@ -158,8 +158,8 @@ AND role IN ('user', 'assistant')
 
 ### Переменные окружения
 
-**USE_REAL_STATS** (default: `false`)
-- `true` - использовать RealStatCollector (PostgreSQL)
+**USE_REAL_STATS** (default: `true`)
+- `true` - использовать RealStatCollector (PostgreSQL) - **по умолчанию**
 - `false` - использовать MockStatCollector (генерация)
 
 **DATABASE_URL** (required для Real Stats)
@@ -173,13 +173,13 @@ postgresql://postgres:postgres@localhost:5433/systech_aidd
 ### Пример .env
 
 ```env
-# Mock Stats (по умолчанию)
-USE_REAL_STATS=false
-
-# Real Stats из БД
-USE_REAL_STATS=true
+# Real Stats из БД (по умолчанию)
+# USE_REAL_STATS=true  # можно не указывать, это default
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/systech_aidd
 DATABASE_TIMEOUT=10
+
+# Mock Stats (для тестирования)
+USE_REAL_STATS=false
 ```
 
 ---
@@ -334,11 +334,11 @@ curl http://localhost:8000/api/stats/dashboard | python -m json.tool
 
 A: Просто перезапустите API с нужной переменной окружения:
 ```bash
-# Mock
+# Real (по умолчанию)
 make api-dev
 
-# Real
-make api-dev-real
+# Mock (для тестирования)
+USE_REAL_STATS=false make api-dev
 ```
 
 **Q: Что если БД пустая?**
@@ -358,4 +358,5 @@ A: Да, если PostgreSQL запущен локально или удален
 **Дата создания:** 2025-10-17  
 **Версия:** 1.0  
 **Статус:** ✅ Реализовано и протестировано
+
 

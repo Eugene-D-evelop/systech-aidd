@@ -134,6 +134,7 @@ async def handle_message(message: types.Message) -> None:
 |---------|-----------|----------|
 | `/start` | `start_command()` | Приветствие и описание роли |
 | `/role` | `role_command()` | Детальное описание роли бота |
+| `/me` | `me_command()` | Просмотр профиля и статистики пользователя |
 | `/reset` | `reset_command()` | Очистка истории диалога |
 | Текст | `handle_message()` | Обработка текста через LLM |
 
