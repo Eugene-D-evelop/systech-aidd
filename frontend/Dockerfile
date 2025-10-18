@@ -13,14 +13,18 @@ COPY package.json pnpm-lock.yaml ./
 # Установка зависимостей
 RUN pnpm install
 
-# Копирование исходного кода и конфигов
-COPY src/ ./src/
+# Копирование конфигов сначала
 COPY next.config.ts ./
 COPY tsconfig.json ./
 COPY postcss.config.mjs ./
 COPY components.json ./
 COPY eslint.config.mjs ./
-COPY public/ ./public/
+
+# Копирование исходного кода (весь src со всеми подпапками)
+COPY src ./src
+
+# Копирование публичных файлов
+COPY public ./public
 
 # Порт для Next.js dev server
 EXPOSE 3000
