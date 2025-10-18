@@ -18,16 +18,10 @@ services:
   bot:
     image: ghcr.io/eugene-d-evelop/systech-aidd-bot:latest
     command: [ "uv", "run", "python", "-m", "src.main" ]
+    env_file:
+      - .env
     environment:
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-oss-20b:free}
-      SYSTEM_PROMPT: ${SYSTEM_PROMPT:-Ты полезный AI-ассистент.}
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/systech_aidd
-      MAX_HISTORY_LENGTH: ${MAX_HISTORY_LENGTH:-10}
-      TEMPERATURE: ${TEMPERATURE:-0.7}
-      MAX_TOKENS: ${MAX_TOKENS:-1000}
-      TIMEOUT: ${TIMEOUT:-60}
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,16 +32,10 @@ services:
     command: [ "uv", "run", "python", "-m", "src.api_main" ]
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-not_required_for_api}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-oss-20b:free}
-      SYSTEM_PROMPT: ${SYSTEM_PROMPT:-Ты полезный AI-ассистент.}
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/systech_aidd
-      MAX_HISTORY_LENGTH: ${MAX_HISTORY_LENGTH:-10}
-      TEMPERATURE: ${TEMPERATURE:-0.7}
-      MAX_TOKENS: ${MAX_TOKENS:-1000}
-      TIMEOUT: ${TIMEOUT:-60}
     depends_on:
       postgres:
         condition: service_healthy
