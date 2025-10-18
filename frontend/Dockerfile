@@ -21,7 +21,8 @@ COPY components.json ./
 COPY eslint.config.mjs ./
 
 # Копирование исходного кода (весь src со всеми подпапками)
-COPY src ./src/
+# Используем src/ с trailing slash чтобы скопировать содержимое
+COPY src/ ./src/
 
 # Копирование публичных файлов
 COPY public ./public
