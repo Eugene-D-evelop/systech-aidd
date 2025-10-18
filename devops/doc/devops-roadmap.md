@@ -8,7 +8,7 @@ MVP подход к развертыванию: от локального Docker
 |-----|----------|--------|------|
 | **D0** | Basic Docker Setup | ✅ Done | [План](plans/d0-basic-docker-setup.md) |
 | **D1** | Build & Publish | ✅ Done | [План](plans/d1-build-publish-plan.md) |
-| **D2** | Manual Server Deploy | ⏳ Pending | - |
+| **D2** | Manual Server Deploy | 🚧 In Progress | [План](plans/d2-manual-deploy.md) |
 | **D3** | Auto Deploy | ⏳ Pending | - |
 
 **Легенда статусов:**
