@@ -60,6 +60,55 @@ docker-compose restart bot
 
 ---
 
+## 🚀 CI/CD
+
+[![Build Status](https://github.com/Eugene-D-evelop/systech-aidd/actions/workflows/build.yml/badge.svg)](https://github.com/Eugene-D-evelop/systech-aidd/actions/workflows/build.yml)
+
+### Docker образы
+
+Проект автоматически собирается и публикуется в GitHub Container Registry при каждом push в main ветку:
+
+- **Bot:** `ghcr.io/eugene-d-evelop/systech-aidd-bot:latest`
+- **API:** `ghcr.io/eugene-d-evelop/systech-aidd-api:latest`
+- **Frontend:** `ghcr.io/eugene-d-evelop/systech-aidd-frontend:latest`
+
+### Запуск из готовых образов
+
+Используйте предсобранные образы из GitHub Container Registry для быстрого запуска:
+
+```bash
+# Скачать последние образы и запустить
+docker-compose -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.prod.yml up -d
+
+# Проверить работу сервисов
+curl http://localhost:8000/health
+curl http://localhost:3000
+
+# Просмотр логов
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Остановка
+docker-compose -f docker-compose.prod.yml down
+```
+
+**Преимущества использования готовых образов:**
+- ✅ Не нужно собирать образы локально
+- ✅ Быстрый старт (только скачивание)
+- ✅ Образы уже протестированы в CI
+- ✅ Подходит для production развертывания
+
+### Локальная разработка
+
+Для разработки с hot-reload используйте обычный `docker-compose.yml`:
+
+```bash
+# Сборка из исходников с hot-reload
+docker-compose up --build
+```
+
+---
+
 ## 🚀 Быстрый старт
 
 ### Предварительные требования
